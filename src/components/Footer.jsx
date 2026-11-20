@@ -1,137 +1,137 @@
 /**
- * @fileoverview Komponen Footer Editorial Gelap (`01–04 Footer`) untuk Storefront STILL.
+ * @fileoverview Komponen Footer Editorial Gelap Storefront STILL.
  *
- * Menyajikan penutup halaman dengan latar gelap `#141414`, tipografi besar `still.`,
- * slogan merek, tautan cepat storefront maupun Seller Workspace, dan hak cipta Jakarta, Indonesia.
+ * Revisi UI/UX yang diterapkan:
+ * - Tautan navigasi menggunakan `SHARED_NAV_LINKS` sehingga 100% sinkron dengan Navbar (desktop & mobile).
+ * - Semua tombol di Footer memiliki fungsi nyata (navigasi rute, buka Concierge, buka Sign In, ganti bahasa).
+ * - Menambahkan copyright resmi `© 2026 fahrizaa - STILL`.
  */
+
+import { Link } from 'react-router-dom'
+import { SHARED_NAV_LINKS } from '../data/translations'
 
 /**
  * Merender footer global STILL untuk seluruh halaman storefront.
  *
  * @param {object} props - Properti komponen Footer.
- * @param {Function} props.onNavigate - Handler navigasi halaman ketika tautan footer diklik.
- * @param {Function} props.onOpenConcierge - Handler untuk membuka panel bantuan STILL Concierge.
+ * @param {Function} props.onOpenConcierge - Handler membuka panel bantuan STILL Concierge.
+ * @param {Function} props.onOpenSignIn - Handler membuka modal Sign In / Akun.
+ * @param {Function} props.onOpenCart - Handler membuka drawer Tas Belanja.
+ * @param {'id' | 'en'} props.lang - Kode bahasa aktif.
+ * @param {Function} props.onToggleLang - Handler mengganti bahasa (`id` <-> `en`).
+ * @param {object} props.t - Kamus terjemahan aktif.
  * @returns {JSX.Element} Elemen footer storefront.
  */
-export default function Footer({ onNavigate, onOpenConcierge }) {
+export default function Footer({
+  onNavigate,
+  onOpenConcierge,
+  onOpenSignIn,
+  onOpenCart,
+  currentUser,
+  lang,
+  onToggleLang,
+  t,
+}) {
   return (
-    <footer className="mt-20 bg-[#141414] text-white">
-      <div className="mx-auto max-w-[1440px] px-5 py-14 sm:px-8 sm:py-16 lg:px-12 lg:py-20">
-        {/* Baris Atas: Wordmark Besar & Kolom Navigasi */}
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12">
-          <div className="lg:col-span-5 flex flex-col justify-between gap-6">
+    <footer className="mt-16 bg-[#141414] text-white">
+      <div className="mx-auto max-w-[1440px] px-5 py-12 sm:px-8 sm:py-14 lg:px-12">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
+          {/* Identitas Brand */}
+          <div className="lg:col-span-5 flex flex-col justify-between gap-4">
             <div>
-              <p className="text-[48px] sm:text-[64px] font-normal leading-none tracking-[-2.5px] text-white">
+              <Link
+                to="/"
+                className="inline-block text-[42px] sm:text-[52px] font-normal leading-none tracking-[-2px] text-white hover:opacity-80"
+              >
                 still.
-              </p>
-              <p className="mt-4 max-w-xs text-[10px] font-medium uppercase tracking-[0.14em] text-[#a1a1aa]">
-                CONSIDERED FURNITURE.
-                <br />
-                EVERYDAY LIVING.
+              </Link>
+              <p className="mt-3 max-w-sm text-[13px] leading-[1.6] text-[#a1a1aa]">
+                {t.footerTagline}
               </p>
             </div>
-            <p className="max-w-sm text-[13px] leading-[1.6] text-[#8a8a93]">
-              Architectural pieces built in small runs with sustainably harvested hardwoods and natural textiles.
-            </p>
+
+            <div className="text-[12px] text-[#a1a1aa]">
+              <p className="font-medium text-white">{t.footerShowroomHeading}</p>
+              <p className="mt-1">Jl. Kemang Selatan VIII No. 14, Jakarta Selatan 12730</p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-7">
+          {/* Kolom Navigasi yang Sinkron dengan Navbar */}
+          <div className="grid grid-cols-2 gap-8 lg:col-span-7">
             <div>
-              <p className="mb-4 text-[10px] font-medium uppercase tracking-[0.12em] text-[#71717a]">
-                Storefront
+              <p className="mb-3.5 text-[11px] font-medium uppercase tracking-[0.1em] text-[#a1a1aa]">
+                {t.footerNavHeading}
               </p>
-              <ul className="space-y-2.5 text-[13px] text-[#e4e4e7]">
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('home')}
-                    className="hover:text-[#38bdf8] transition-colors cursor-pointer"
-                  >
-                    Home Editorial
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('shop', { clearFilters: true })}
-                    className="hover:text-[#38bdf8] transition-colors cursor-pointer"
-                  >
-                    Shop All Furniture
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('product', { productId: 'forma-lounge-chair' })}
-                    className="hover:text-[#38bdf8] transition-colors cursor-pointer"
-                  >
-                    Forma Lounge Chair
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('checkout')}
-                    className="hover:text-[#38bdf8] transition-colors cursor-pointer"
-                  >
-                    Checkout & QRIS
-                  </button>
-                </li>
+              <ul className="space-y-2 text-[13px] text-[#e4e4e7]">
+                {SHARED_NAV_LINKS.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      to={item.path}
+                      onClick={(e) => {
+                        if (item.path.startsWith('/seller') && currentUser?.role !== 'seller') {
+                          e.preventDefault()
+                          onNavigate(item.path)
+                        }
+                      }}
+                      className="inline-flex min-h-[36px] items-center transition-colors hover:text-[#38bdf8]"
+                    >
+                      {t[item.labelKey]}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
             <div>
-              <p className="mb-4 text-[10px] font-medium uppercase tracking-[0.12em] text-[#71717a]">
-                Seller & Studio
+              <p className="mb-3.5 text-[11px] font-medium uppercase tracking-[0.1em] text-[#a1a1aa]">
+                {t.footerFeatureHeading}
               </p>
-              <ul className="space-y-2.5 text-[13px] text-[#e4e4e7]">
+              <ul className="space-y-2 text-[13px] text-[#e4e4e7]">
                 <li>
                   <button
                     type="button"
-                    onClick={() => onNavigate('seller-inventory')}
-                    className="hover:text-[#38bdf8] transition-colors cursor-pointer"
+                    onClick={onOpenConcierge}
+                    className="inline-flex min-h-[36px] items-center transition-colors hover:text-[#38bdf8] cursor-pointer"
                   >
-                    Seller Inventory
+                    {t.navConcierge}
                   </button>
                 </li>
                 <li>
                   <button
                     type="button"
-                    onClick={() => onNavigate('seller-studio')}
-                    className="hover:text-[#38bdf8] transition-colors cursor-pointer"
+                    onClick={onOpenCart}
+                    className="inline-flex min-h-[36px] items-center transition-colors hover:text-[#38bdf8] cursor-pointer"
                   >
-                    Seller Add Studio
+                    {t.bagTitle}
                   </button>
                 </li>
                 <li>
                   <button
                     type="button"
-                    onClick={() => onOpenConcierge()}
-                    className="hover:text-[#38bdf8] transition-colors cursor-pointer"
+                    onClick={onOpenSignIn}
+                    className="inline-flex min-h-[36px] items-center transition-colors hover:text-[#38bdf8] cursor-pointer"
                   >
-                    Ask STILL Concierge
+                    {t.signIn} (Pembeli / Penjual)
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={onToggleLang}
+                    className="inline-flex min-h-[36px] items-center transition-colors hover:text-[#38bdf8] cursor-pointer"
+                  >
+                    {t.langLabel}: {lang === 'id' ? 'Bahasa Indonesia (ID)' : 'English (EN)'}
                   </button>
                 </li>
               </ul>
-            </div>
-
-            <div>
-              <p className="mb-4 text-[10px] font-medium uppercase tracking-[0.12em] text-[#71717a]">
-                Showroom
-              </p>
-              <div className="space-y-2 text-[13px] text-[#a1a1aa]">
-                <p>Jl. Kemang Selatan VIII No. 14</p>
-                <p>Jakarta Selatan 12730</p>
-                <p className="pt-2 text-white">hello@still.co.id</p>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Garis Bawah Hak Cipta */}
-        <div className="mt-14 flex flex-col gap-3 border-t border-white/10 pt-6 text-[11px] text-[#71717a] sm:flex-row sm:items-center sm:justify-between">
+        {/* Garis Bawah Hak Cipta (`fahrizaa - STILL`) */}
+        <div className="mt-10 flex flex-col gap-2 border-t border-white/10 pt-6 text-[12px] text-[#a1a1aa] sm:flex-row sm:items-center sm:justify-between">
+          <p>{t.footerCopyright}</p>
           <p>Jakarta, Indonesia</p>
-          <p>© 2026 STILL — Considered Furniture Studio</p>
         </div>
       </div>
     </footer>

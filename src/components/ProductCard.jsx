@@ -1,37 +1,36 @@
 /**
- * @fileoverview Komponen Kartu Produk (ProductCard) untuk Halaman Home dan Shop.
+ * @fileoverview Komponen Kartu Produk (ProductCard) untuk Halaman Beranda dan Katalog.
  *
- * Menerjemahkan komponen Figma `Product card` ke dalam kartu responsif yang memuat:
- * - Gambar produk berlatar lembut dengan sudut membulat (`rounded-[20px]`)
- * - Lencana kategori & status ketersediaan stok (`In stock`, `Low stock`, `Out of stock`)
- * - Nama produk, harga terformat Rupiah, dan tombol `+` tambah cepat ke tas belanja.
+ * Menggunakan rute dinamis `/product/:id` dari React Router untuk navigasi halaman detail,
+ * serta tombol `+` berukuran ramah sentuhan (44x44px) untuk tambah cepat ke tas belanja.
  */
 
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { formatRupiah, getStockMeta } from '../data/furnitureData'
 import { BadgeChip } from './ui/Buttons'
 
 /**
- * Merender satu kartu produk furnitur interaktif.
+ * Merender satu kartu produk furnitur interaktif yang terhubung ke `/product/:id`.
  *
  * @param {object} props - Properti komponen ProductCard.
  * @param {object} props.product - Objek data produk (id, name, price, category, stock, image).
- * @param {Function} props.onSelectProduct - Handler saat kartu/judul diklik untuk membuka Product Detail.
  * @param {Function} props.onAddToCart - Handler saat tombol `+` diklik untuk menambah produk ke keranjang.
  * @returns {JSX.Element} Elemen kartu produk.
  */
-export default function ProductCard({ product, onSelectProduct, onAddToCart }) {
+export default function ProductCard({ product, onAddToCart }) {
   const [justAdded, setJustAdded] = useState(false)
   const stockMeta = getStockMeta(product.stock)
   const isOutOfStock = product.stock <= 0
 
   /**
-   * Menangani klik tombol tambah cepat (`+`) agar tidak ikut memicu navigasi ke halaman detail (`stopPropagation`),
-   * lalu menampilkan feedback centang singkat selama 1,2 detik.
+   * Menangani klik tombol tambah cepat (`+`) agar tidak memicu perpindahan rute `<Link>`,
+   * lalu menampilkan feedback centang singkat.
    *
    * @param {React.MouseEvent} event - Event klik mouse pada tombol `+`.
    */
   const handleQuickAdd = (event) => {
+    event.preventDefault()
     event.stopPropagation()
     if (isOutOfStock) return
     onAddToCart(product, 1)
@@ -40,45 +39,44 @@ export default function ProductCard({ product, onSelectProduct, onAddToCart }) {
   }
 
   return (
-    <article
-      onClick={() => onSelectProduct(product.id)}
-      className="group flex flex-col rounded-[20px] bg-[#f5f5f7] p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#ededf1] cursor-pointer"
-    >
-      {/* Wadah Foto Produk */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[14px] bg-white">
+    <article className="group flex flex-col rounded-[20px] border border-[#e6e6e9]/70 bg-[#f5f5f7] p-3.5 transition-colors duration-200 hover:border-[#d4d4d8] hover:bg-[#ededf1]">
+      <Link
+        to={`/product/${product.id}`}
+        className="relative aspect-[4/3] w-full overflow-hidden rounded-[14px] bg-white block"
+      >
         <img
           src={product.image}
           alt={product.name}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+          width={640}
+          height={480}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           loading="lazy"
         />
 
-        {/* Lencana Status & Kategori di Pojok Atas Gambar */}
         <div className="absolute left-3 right-3 top-3 flex items-center justify-between gap-2">
-          <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.06em] text-[#111111] backdrop-blur-sm">
+          <span className="rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.06em] text-[#111111]">
             {product.category}
           </span>
           <BadgeChip tone={stockMeta.tone}>{stockMeta.label}</BadgeChip>
         </div>
-      </div>
+      </Link>
 
-      {/* Informasi Nama, Harga & Tombol Tambah Cepat */}
-      <div className="mt-3.5 flex items-end justify-between gap-3 px-1 pb-1">
-        <div className="min-w-0">
-          <h3 className="truncate text-[15px] font-normal leading-[1.35] text-[#111111]">
+      <div className="mt-3.5 flex items-center justify-between gap-3 px-1 pb-0.5">
+        <Link to={`/product/${product.id}`} className="min-w-0 flex-1">
+          <h3 className="truncate text-[15px] font-medium leading-[1.35] text-[#111111] group-hover:underline">
             {product.name}
           </h3>
-          <p className="mt-0.5 text-[13px] font-medium text-[#71717a]">
+          <p className="mt-0.5 text-[13px] font-normal text-[#52525b]">
             {formatRupiah(product.price)}
           </p>
-        </div>
+        </Link>
 
         <button
           type="button"
           onClick={handleQuickAdd}
           disabled={isOutOfStock}
-          aria-label={`Tambah ${product.name} ke keranjang`}
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[15px] font-medium transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+          aria-label={`Add ${product.name} to bag`}
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[16px] font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
             justAdded
               ? 'bg-[#376b56] text-white'
               : 'bg-[#141414] text-white hover:bg-[#2c2c30]'

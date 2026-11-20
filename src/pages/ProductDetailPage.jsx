@@ -1,107 +1,127 @@
 /**
- * @fileoverview Halaman Detail Produk (`03 — Product / Forma lounge chair`).
+ * @fileoverview Halaman Detail Produk Dinamis (`/product/:id`).
  *
- * Menerjemahkan tampilan Figma Screen 03 dengan komponen interaktif penuh:
- * - Breadcrumb navigasi (`Home / Shop furniture / Category / Product`).
- * - Galeri multi-sudut pandang dengan pemilih thumbnail dan tombol wishlist (`♡` / `♥`).
- * - Tabel dimensi (`WIDTH / DEPTH / HEIGHT`) plus tombol `How it fits in your space` (membuka `08 ScaleModal`).
- * - Swatch pilihan material finishing, pemilih jumlah stok (`− / +`), `Buy Now`, `Add to Cart`,
- *   dan `Ask Admin About This Product` (membuka `07 ConciergeDrawer`).
- * - Rincian `The details that matter.` & rekomendasi produk sejenis di bagian bawah.
+ * Fitur yang diterapkan:
+ * - Membaca parameter `:id` langsung dari URL melalui `useParams()` React Router.
+ * - Menampilkan `ProductDetailSkeleton` saat data sedang dimuat dari API,
+ *   `ApiErrorState` bila gagal, dan tampilan 404 Product Not Found jika ID tidak valid.
+ * - Mendukung Bahasa Indonesia (`id`) dan Inggris (`en`).
  */
 
 import { useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import ProductCard from '../components/ProductCard'
+import { ApiErrorState, ProductDetailSkeleton } from '../components/ui/ApiStateViews'
 import { ActionPillButton, BadgeChip } from '../components/ui/Buttons'
 import { formatRupiah, getStockMeta } from '../data/furnitureData'
 
 /**
- * Merender halaman detail lengkap untuk satu unit furnitur.
- * Catatan: parent menyematkan `key={product.id}` agar state galeri & finish otomatis reset saat pindah produk.
+ * Komponen internal konten detail produk yang di-reset otomatis melalui `key={product.id}`.
  *
- * @param {object} props - Properti ProductDetailPage.
- * @param {object} props.product - Objek lengkap produk yang sedang dilihat.
- * @param {Array<object>} props.relatedProducts - Daftar 3 produk terkait untuk bagian bawah halaman.
- * @param {Function} props.onNavigate - Handler navigasi halaman (`home`, `shop`, `checkout`).
- * @param {Function} props.onSelectProduct - Handler memilih produk lain dari bagian rekomendasi.
- * @param {Function} props.onAddToCart - Handler menambah produk ke tas belanja (`(product, qty, finishName) => void`).
- * @param {Function} props.onOpenScale - Handler membuka modal `08 Scale & Proportions`.
- * @param {Function} props.onOpenConcierge - Handler membuka drawer `07 STILL Concierge`.
- * @returns {JSX.Element} Elemen halaman detail produk.
+ * @param {object} props - Properti ProductDetailView.
+ * @param {object} props.product - Objek produk yang ditemukan.
+ * @param {Array<object>} props.relatedProducts - Daftar produk terkait.
+ * @param {Function} props.onAddToCart - Handler tambah ke keranjang.
+ * @param {Function} props.onOpenScale - Handler buka modal Scale & Proportions.
+ * @param {Function} props.onOpenConcierge - Handler buka drawer STILL Concierge.
+ * @param {object} props.t - Kamus bahasa aktif.
+ * @returns {JSX.Element} Konten detail produk.
  */
-export default function ProductDetailPage({
+function ProductDetailView({
   product,
   relatedProducts,
-  onNavigate,
-  onSelectProduct,
   onAddToCart,
   onOpenScale,
   onOpenConcierge,
+  t,
 }) {
-  const gallery = product.gallery?.length
-    ? product.gallery
-    : [{ id: 'default', label: product.name, src: product.image }]
-  const finishes = product.finishes?.length
-    ? product.finishes
-    : [{ id: 'standard', name: 'Natural finish', swatch: '#8c6239', accent: '#dfd9ce' }]
+  const navigate = useNavigate()
 
-  const [activeImageIdx, setActiveImageIdx] = useState(0)
+  const finishes =
+    product.finishes?.length >= 2
+      ? product.finishes.slice(0, 2)
+      : [
+          {
+            id: 'natural',
+            name: 'Natural Walnut',
+            swatch: '#8c6239',
+            image: product.image,
+            gallery: product.gallery,
+          },
+          {
+            id: 'black-ash',
+            name: 'Black Ash',
+            swatch: '#232325',
+            image: product.image,
+            gallery: product.gallery,
+          },
+        ]
+
   const [selectedFinishIdx, setSelectedFinishIdx] = useState(0)
+  const [activeImageIdx, setActiveImageIdx] = useState(0)
   const [qty, setQty] = useState(1)
   const [wishlisted, setWishlisted] = useState(false)
   const [addedBanner, setAddedBanner] = useState(false)
 
-  const activeImage = gallery[activeImageIdx] || gallery[0]
   const selectedFinish = finishes[selectedFinishIdx] || finishes[0]
+  const gallery = selectedFinish.gallery?.length
+    ? selectedFinish.gallery
+    : product.gallery?.length
+      ? product.gallery
+      : [{ id: 'default', label: product.name, src: selectedFinish.image || product.image }]
+
+  const activeImage = gallery[activeImageIdx] || gallery[0]
   const stockMeta = getStockMeta(product.stock)
   const isOutOfStock = product.stock <= 0
 
   /**
-   * Menambahkan item pilihan ke tas belanja lalu memunculkan umpan balik visual singkat.
+   * Menambahkan item beserta gambar warna terpilih ke tas belanja.
    */
   const handleAddToBag = () => {
     if (isOutOfStock) return
-    onAddToCart(product, qty, selectedFinish.name)
+    onAddToCart(
+      { ...product, image: selectedFinish.image || activeImage.src },
+      qty,
+      selectedFinish.name
+    )
     setAddedBanner(true)
     setTimeout(() => setAddedBanner(false), 1800)
   }
 
   /**
-   * Menambahkan item pilihan ke tas belanja dan langsung membawa pengguna ke halaman Checkout (`04/09`).
+   * Menambahkan item beserta gambar warna terpilih ke tas belanja lalu menuju `/checkout`.
    */
   const handleBuyNow = () => {
     if (isOutOfStock) return
-    onAddToCart(product, qty, selectedFinish.name)
-    onNavigate('checkout')
+    onAddToCart(
+      { ...product, image: selectedFinish.image || activeImage.src },
+      qty,
+      selectedFinish.name
+    )
+    navigate('/checkout')
   }
 
   return (
-    <main className="mx-auto max-w-[1440px] px-5 pt-6 sm:px-8 sm:pt-8 lg:px-12">
-      {/* Breadcrumb Navigasi */}
-      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-[12px] text-[#71717a]">
-        <button
-          type="button"
-          onClick={() => onNavigate('home')}
-          className="hover:text-[#111111] cursor-pointer"
-        >
-          Home
-        </button>
+    <main className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-8 sm:pt-8 lg:px-12">
+      {/* Breadcrumb Navigasi Berbasis Route */}
+      <nav
+        aria-label="Breadcrumb"
+        className="flex flex-wrap items-center gap-2 text-[12px] text-[#52525b]"
+      >
+        <Link to="/" className="hover:text-[#111111]">
+          {t.navHome}
+        </Link>
         <span>/</span>
-        <button
-          type="button"
-          onClick={() => onNavigate('shop', { clearFilters: true })}
-          className="hover:text-[#111111] cursor-pointer"
-        >
-          Shop furniture
-        </button>
+        <Link to="/shop" className="hover:text-[#111111]">
+          {t.navShop}
+        </Link>
         <span>/</span>
-        <button
-          type="button"
-          onClick={() => onNavigate('shop', { categories: [product.category] })}
-          className="hover:text-[#111111] cursor-pointer"
+        <Link
+          to={`/shop?category=${encodeURIComponent(product.category)}`}
+          className="hover:text-[#111111]"
         >
           {product.category}
-        </button>
+        </Link>
         <span>/</span>
         <span className="font-medium text-[#111111]">{product.name}</span>
       </nav>
@@ -113,27 +133,27 @@ export default function ProductDetailPage({
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[24px] bg-[#f5f5f7]">
             <img
               src={activeImage.src}
-              alt={`${product.name} — ${activeImage.label}`}
+              alt={`${product.name} - ${activeImage.label}`}
+              width={960}
+              height={720}
               className="h-full w-full object-cover"
             />
 
-            {/* Badge Koleksi & Tombol Wishlist Mengambang */}
             <div className="absolute left-4 right-4 top-4 flex items-center justify-between gap-2">
-              <span className="rounded-full bg-white/90 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[#111111] backdrop-blur-sm">
+              <span className="rounded-full bg-white/95 px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.1em] text-[#111111]">
                 {product.collectionTag || 'STILL COLLECTION'}
               </span>
               <button
                 type="button"
                 onClick={() => setWishlisted((prev) => !prev)}
                 aria-label="Toggle wishlist"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-[16px] text-[#111111] shadow-xs backdrop-blur-sm transition-transform hover:scale-105 cursor-pointer"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-[16px] text-[#111111] shadow-xs transition-transform hover:scale-105 cursor-pointer"
               >
                 {wishlisted ? '♥' : '♡'}
               </button>
             </div>
           </div>
 
-          {/* Thumbnail Strip 4 Sudut Pandang */}
           <div className="mt-3.5 grid grid-cols-4 gap-3">
             {gallery.map((item, idx) => {
               const isSelected = idx === activeImageIdx
@@ -142,7 +162,7 @@ export default function ProductDetailPage({
                   key={item.id}
                   type="button"
                   onClick={() => setActiveImageIdx(idx)}
-                  className={`group overflow-hidden rounded-[14px] border-2 bg-[#f5f5f7] transition-all cursor-pointer ${
+                  className={`overflow-hidden rounded-[14px] border-2 bg-[#f5f5f7] transition-all cursor-pointer ${
                     isSelected
                       ? 'border-[#141414]'
                       : 'border-transparent opacity-75 hover:opacity-100'
@@ -151,6 +171,8 @@ export default function ProductDetailPage({
                   <img
                     src={item.src}
                     alt={item.label}
+                    width={240}
+                    height={240}
                     className="aspect-square w-full object-cover"
                   />
                 </button>
@@ -163,13 +185,11 @@ export default function ProductDetailPage({
         <div className="flex flex-col justify-between lg:col-span-5">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-[12px] text-[#111111]">
-                <span className="text-[#8c6239]">★</span>
-                <span className="font-medium">{product.rating?.toFixed(1) || '4.9'}</span>
-                <span className="text-[#71717a]">({product.reviewsCount || 48} reviews)</span>
-              </div>
+              <span className="text-[12px] font-medium text-[#52525b]">
+                SKU {product.sku} · {product.room}
+              </span>
               <BadgeChip tone={stockMeta.tone}>
-                {isOutOfStock ? 'Out of stock' : `${stockMeta.label} · ${product.stock} left`}
+                {isOutOfStock ? 'Out of stock' : `${stockMeta.label} · ${product.stock} unit`}
               </BadgeChip>
             </div>
 
@@ -177,17 +197,17 @@ export default function ProductDetailPage({
               {product.name}
             </h1>
 
-            <p className="mt-3 text-[24px] font-normal tracking-[-0.4px] text-[#111111]">
+            <p className="mt-3 text-[24px] font-medium tracking-[-0.4px] text-[#111111]">
               {formatRupiah(product.price)}
             </p>
 
-            <p className="mt-4 text-[14px] leading-[1.65] text-[#71717a]">{product.summary}</p>
+            <p className="mt-4 text-[14px] leading-[1.65] text-[#52525b]">{product.summary}</p>
 
-            {/* Kartu Dimensi + Pemicu Modal Skala (08 ScaleModal) */}
+            {/* Kartu Dimensi + Pemicu Modal Skala */}
             <div className="mt-6 rounded-[18px] border border-[#e6e6e9] bg-[#fafafa] p-4">
               <div className="grid grid-cols-3 gap-3 border-b border-[#e6e6e9] pb-3.5 text-center sm:text-left">
                 <div>
-                  <p className="text-[9px] font-medium uppercase tracking-[0.1em] text-[#71717a]">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#71717a]">
                     WIDTH
                   </p>
                   <p className="mt-1 text-[15px] font-medium text-[#111111]">
@@ -195,7 +215,7 @@ export default function ProductDetailPage({
                   </p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-medium uppercase tracking-[0.1em] text-[#71717a]">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#71717a]">
                     DEPTH
                   </p>
                   <p className="mt-1 text-[15px] font-medium text-[#111111]">
@@ -203,7 +223,7 @@ export default function ProductDetailPage({
                   </p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-medium uppercase tracking-[0.1em] text-[#71717a]">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#71717a]">
                     HEIGHT
                   </p>
                   <p className="mt-1 text-[15px] font-medium text-[#111111]">
@@ -215,18 +235,18 @@ export default function ProductDetailPage({
               <button
                 type="button"
                 onClick={() => onOpenScale(product)}
-                className="mt-3 flex w-full items-center justify-between text-[12px] font-medium text-[#111111] hover:text-[#8c6239] transition-colors cursor-pointer"
+                className="mt-3 flex min-h-[36px] w-full items-center justify-between text-left text-[12px] font-medium text-[#111111] transition-colors hover:text-[#8c6239] cursor-pointer"
               >
-                <span>How it fits in your space (170cm & 3×3m room guide)</span>
+                <span>{t.detailScaleBtn}</span>
                 <span>↗</span>
               </button>
             </div>
 
-            {/* Pemilih Material Finishing (Swatches) */}
+            {/* Pemilih Material Finishing */}
             <div className="mt-6">
               <div className="flex items-center justify-between text-[12px]">
-                <span className="font-medium uppercase tracking-[0.08em] text-[#71717a]">
-                  MATERIAL FINISH
+                <span className="font-medium uppercase tracking-[0.08em] text-[#52525b]">
+                  {t.detailMaterialFinish}
                 </span>
                 <span className="font-medium text-[#111111]">{selectedFinish.name}</span>
               </div>
@@ -239,10 +259,10 @@ export default function ProductDetailPage({
                       key={finish.id}
                       type="button"
                       onClick={() => setSelectedFinishIdx(idx)}
-                      className={`flex items-center gap-2.5 rounded-full border px-3.5 py-2 text-[12px] transition-all cursor-pointer ${
+                      className={`flex min-h-[42px] items-center gap-2.5 rounded-full border px-3.5 py-2 text-[12px] transition-all cursor-pointer ${
                         isSelected
                           ? 'border-[#141414] bg-[#f5f5f7] font-medium text-[#111111]'
-                          : 'border-[#e6e6e9] bg-white text-[#71717a] hover:border-[#b4b4bc]'
+                          : 'border-[#e6e6e9] bg-white text-[#52525b] hover:border-[#b4b4bc]'
                       }`}
                     >
                       <span
@@ -259,13 +279,12 @@ export default function ProductDetailPage({
             {/* Kontrol Kuantitas & Tombol Beli */}
             <div className="mt-7 space-y-3">
               <div className="flex flex-wrap items-center gap-3">
-                {/* Stepper Jumlah Unit */}
-                <div className="inline-flex h-[48px] items-center gap-5 rounded-full border border-[#e6e6e9] bg-[#f5f5f7] px-5 text-[14px]">
+                <div className="inline-flex h-[48px] items-center gap-4 rounded-full border border-[#e6e6e9] bg-[#f5f5f7] px-4 text-[14px]">
                   <button
                     type="button"
                     onClick={() => setQty((prev) => Math.max(1, prev - 1))}
-                    className="text-[#111111] hover:opacity-60 cursor-pointer"
-                    aria-label="Kurangi kuantitas"
+                    className="flex h-8 w-8 items-center justify-center text-[#111111] hover:opacity-60 cursor-pointer"
+                    aria-label="Decrease quantity"
                   >
                     −
                   </button>
@@ -275,15 +294,15 @@ export default function ProductDetailPage({
                     onClick={() =>
                       setQty((prev) => Math.min(Math.max(1, product.stock), prev + 1))
                     }
-                    className="text-[#111111] hover:opacity-60 cursor-pointer"
-                    aria-label="Tambah kuantitas"
+                    className="flex h-8 w-8 items-center justify-center text-[#111111] hover:opacity-60 cursor-pointer"
+                    aria-label="Increase quantity"
                   >
                     +
                   </button>
                 </div>
 
                 <ActionPillButton
-                  label={isOutOfStock ? 'Out of stock' : 'Buy Now'}
+                  label={isOutOfStock ? 'Out of stock' : t.detailBuyNow}
                   variant="dark"
                   disabled={isOutOfStock}
                   onClick={handleBuyNow}
@@ -291,7 +310,7 @@ export default function ProductDetailPage({
                 />
 
                 <ActionPillButton
-                  label={addedBanner ? 'Added to Bag ✓' : 'Add to Cart'}
+                  label={addedBanner ? `${t.detailAdded} ✓` : t.detailAddToCart}
                   variant="light"
                   icon="none"
                   disabled={isOutOfStock}
@@ -300,7 +319,6 @@ export default function ProductDetailPage({
                 />
               </div>
 
-              {/* Tombol Tanya Admin (07 STILL ConciergeDrawer) */}
               <button
                 type="button"
                 onClick={() => onOpenConcierge(product)}
@@ -308,28 +326,24 @@ export default function ProductDetailPage({
               >
                 <span className="flex items-center gap-2.5">
                   <span className="h-2 w-2 rounded-full bg-[#2e7d32]" />
-                  <span>Ask Admin About This Product</span>
+                  <span>{t.detailAskAdmin}</span>
                 </span>
                 <span className="text-[11px] text-[#8c6239]">STILL Concierge ↗</span>
               </button>
             </div>
           </div>
-
-          <p className="mt-6 text-[11px] leading-[1.5] text-[#71717a]">
-            SKU {product.sku} · 3-year joinery warranty · Free insured Jabodetabek shipping on orders above Rp 5.000.000.
-          </p>
         </div>
       </div>
 
-      {/* BAGIAN SPESIFIKASI ("The details that matter.") */}
-      <section className="mt-20 rounded-[24px] bg-[#f5f5f7] p-6 sm:p-10">
+      {/* BAGIAN SPESIFIKASI */}
+      <section className="mt-16 rounded-[24px] bg-[#f5f5f7] p-6 sm:p-10">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div className="lg:col-span-4">
             <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#71717a]">
-              CRAFTSMANSHIP & SPECS
+              {t.detailSpecsTag}
             </p>
-            <h2 className="mt-2 text-[28px] sm:text-[34px] font-normal leading-[1.1] tracking-[-1px] text-[#111111]">
-              The details that matter.
+            <h2 className="mt-2 text-[26px] sm:text-[32px] font-normal leading-[1.1] tracking-[-1px] text-[#111111]">
+              {t.detailSpecsTitle}
             </h2>
           </div>
 
@@ -348,18 +362,17 @@ export default function ProductDetailPage({
 
       {/* BAGIAN PRODUK TERKAIT */}
       {relatedProducts.length > 0 ? (
-        <section className="mt-20">
+        <section className="mt-16">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-[24px] sm:text-[30px] font-normal tracking-[-0.8px] text-[#111111]">
-              Pair cleanly with
+            <h2 className="text-[24px] sm:text-[28px] font-normal tracking-[-0.8px] text-[#111111]">
+              {t.detailRelatedTitle}
             </h2>
-            <button
-              type="button"
-              onClick={() => onNavigate('shop', { clearFilters: true })}
-              className="text-[12px] font-medium text-[#111111] underline underline-offset-4 cursor-pointer"
+            <Link
+              to="/shop"
+              className="text-[12px] font-medium text-[#111111] underline underline-offset-4"
             >
-              View full catalog →
-            </button>
+              {t.featuredViewAll} →
+            </Link>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -367,7 +380,6 @@ export default function ProductDetailPage({
               <ProductCard
                 key={item.id}
                 product={item}
-                onSelectProduct={onSelectProduct}
                 onAddToCart={onAddToCart}
               />
             ))}
@@ -375,5 +387,88 @@ export default function ProductDetailPage({
         </section>
       ) : null}
     </main>
+  )
+}
+
+/**
+ * Wrapper komponen rute `/product/:id` yang menangani state loading API, error API,
+ * dan resolusi produk berdasarkan parameter URL `:id`.
+ *
+ * @param {object} props - Properti ProductDetailPage.
+ * @param {Array<object>} props.products - Daftar seluruh produk dari API contract.
+ * @param {boolean} props.isLoading - Status loading API.
+ * @param {string | null} props.apiError - Pesan error API.
+ * @param {Function} props.onRetryFetch - Handler retry API.
+ * @param {Function} props.onAddToCart - Handler tambah ke keranjang.
+ * @param {Function} props.onOpenScale - Handler buka modal skala.
+ * @param {Function} props.onOpenConcierge - Handler buka drawer concierge.
+ * @param {object} props.t - Kamus bahasa aktif.
+ * @returns {JSX.Element} Elemen halaman detail produk.
+ */
+export default function ProductDetailPage({
+  products,
+  isLoading,
+  apiError,
+  onRetryFetch,
+  onAddToCart,
+  onOpenScale,
+  onOpenConcierge,
+  t,
+}) {
+  const { id } = useParams()
+  const navigate = useNavigate()
+
+  if (isLoading) {
+    return <ProductDetailSkeleton label={t.apiLoadingTitle} />
+  }
+
+  if (apiError) {
+    return (
+      <main className="mx-auto max-w-[1440px] px-4 pt-10 sm:px-8 lg:px-12">
+        <ApiErrorState
+          title={t.apiErrorTitle}
+          description={t.apiErrorDesc}
+          errorDetail={apiError}
+          retryLabel={t.apiRetryBtn}
+          onRetry={onRetryFetch}
+        />
+      </main>
+    )
+  }
+
+  const product = products.find((p) => p.id === id)
+
+  if (!product) {
+    return (
+      <main className="mx-auto max-w-[1440px] px-4 pt-14 sm:px-8 lg:px-12">
+        <div className="rounded-[24px] border border-[#e6e6e9] bg-[#fafafa] p-10 text-center">
+          <p className="font-mono text-[11px] uppercase text-[#71717a]">404 · /product/{id}</p>
+          <h1 className="mt-2 text-[28px] font-normal text-[#111111]">{t.detailNotFoundTitle}</h1>
+          <p className="mt-2 text-[14px] text-[#52525b]">{t.detailNotFoundDesc}</p>
+          <ActionPillButton
+            label={t.detailBackToShop}
+            variant="dark"
+            className="mt-6"
+            onClick={() => navigate('/shop')}
+          />
+        </div>
+      </main>
+    )
+  }
+
+  const relatedProducts = products
+    .filter((p) => p.id !== product.id && p.status !== 'Draft' && p.stock > 0)
+    .slice(0, 3)
+
+  return (
+    <ProductDetailView
+      key={product.id}
+      product={product}
+      relatedProducts={relatedProducts}
+      onAddToCart={onAddToCart}
+      onOpenScale={onOpenScale}
+      onOpenConcierge={onOpenConcierge}
+      t={t}
+    />
   )
 }

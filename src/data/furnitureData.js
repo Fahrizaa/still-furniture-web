@@ -131,9 +131,30 @@ export const INITIAL_PRODUCTS = [
     },
     sizeTier: 'Compact (< 90cm)',
     finishes: [
-      { id: 'walnut-oatmeal', name: 'Walnut & Oatmeal', swatch: '#8c6239', accent: '#dfd9ce' },
-      { id: 'natural-oak', name: 'Natural oak', swatch: '#cbb38f', accent: '#f1ede4' },
-      { id: 'black-ash', name: 'Black ash', swatch: '#232325', accent: '#525257' },
+      {
+        id: 'walnut-oatmeal',
+        name: 'Natural Walnut',
+        swatch: '#8c6239',
+        image: IMAGES.formaLoungeChair,
+        gallery: [
+          { id: 'angle-hero', label: 'Three-quarter view', src: IMAGES.formaLoungeChair },
+          { id: 'angle-front', label: 'Front profile', src: IMAGES.formaFrontView },
+          { id: 'angle-rear', label: 'Rear joinery', src: IMAGES.formaRearView },
+          { id: 'angle-detail', label: 'Bouclé & walnut grain', src: IMAGES.formaMaterialDetail },
+        ],
+      },
+      {
+        id: 'black-ash',
+        name: 'Black Ash',
+        swatch: '#232325',
+        image: IMAGES.formaLoungeChairBlack,
+        gallery: [
+          { id: 'angle-hero-black', label: 'Three-quarter view (Black)', src: IMAGES.formaLoungeChairBlack },
+          { id: 'angle-front-black', label: 'Front profile (Black)', src: IMAGES.formaFrontViewBlack },
+          { id: 'angle-rear-black', label: 'Rear joinery (Black)', src: IMAGES.formaRearViewBlack },
+          { id: 'angle-detail-black', label: 'Charcoal bouclé & ash grain', src: IMAGES.formaMaterialDetailBlack },
+        ],
+      },
     ],
     image: IMAGES.formaLoungeChair,
     gallery: [
@@ -173,9 +194,18 @@ export const INITIAL_PRODUCTS = [
     },
     sizeTier: 'Large (> 160cm)',
     finishes: [
-      { id: 'warm-linen', name: 'Warm linen', swatch: '#dfd8cd', accent: '#f3f1ec' },
-      { id: 'stone-grey', name: 'Stone grey', swatch: '#8b8a88', accent: '#d6d4cf' },
-      { id: 'espresso-oak', name: 'Espresso oak base', swatch: '#4b382c', accent: '#a89f94' },
+      {
+        id: 'warm-linen',
+        name: 'Warm Linen',
+        swatch: '#cbb38f',
+        image: IMAGES.lumaModularSofa,
+      },
+      {
+        id: 'charcoal-ash',
+        name: 'Charcoal Black',
+        swatch: '#232325',
+        image: IMAGES.lumaModularSofaBlack,
+      },
     ],
     image: IMAGES.lumaModularSofa,
     gallery: [
@@ -597,7 +627,7 @@ export const DUMMY_ACCOUNTS = {
   customer: {
     id: 'user-buyer-01',
     role: 'customer',
-    roleLabel: 'Pembeli',
+    roleLabel: 'Customer',
     name: 'Ayu Prameswari',
     email: 'buyer@still.co.id',
     password: 'still123',
@@ -611,7 +641,7 @@ export const DUMMY_ACCOUNTS = {
     id: 'user-seller-01',
     role: 'seller',
     roleLabel: 'Penjual',
-    name: 'STILL Indonesia',
+    name: 'Penjual',
     email: 'seller@still.co.id',
     password: 'seller123',
     storeLocation: 'Kemang Showroom, Jakarta Selatan',
@@ -669,7 +699,15 @@ export function authenticateDummyAccount({ role, email, password }) {
 export function loadDummySession() {
   try {
     const raw = window.localStorage.getItem(SESSION_STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed?.role === 'seller') {
+      return { ...parsed, name: 'Penjual', roleLabel: 'Penjual' }
+    }
+    if (parsed?.role === 'customer') {
+      return { ...parsed, roleLabel: 'Customer' }
+    }
+    return parsed
   } catch {
     return null
   }

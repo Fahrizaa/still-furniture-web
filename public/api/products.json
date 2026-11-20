@@ -1,0 +1,384 @@
+{
+  "contractVersion": "1.0.0",
+  "endpoint": "/api/v1/products",
+  "currency": "IDR",
+  "updatedAt": "2026-11-20T10:00:00Z",
+  "data": [
+    {
+      "id": "forma-lounge-chair",
+      "sku": "FRM-001",
+      "name": "Forma lounge chair",
+      "category": "Seating",
+      "room": "Living room",
+      "collectionTag": "THE NATURAL COLLECTION",
+      "price": 6800000,
+      "stock": 24,
+      "status": "Published",
+      "rating": 4.9,
+      "reviewsCount": 128,
+      "materials": ["Natural materials", "Solid wood", "Bouclé fabric"],
+      "dimensions": {
+        "width": 72,
+        "depth": 78,
+        "height": 76,
+        "seatHeight": 42,
+        "boxSize": "82 x 80 x 84 cm"
+      },
+      "sizeTier": "Compact (< 90cm)",
+      "finishes": [
+        { "id": "walnut-oatmeal", "name": "Natural Walnut", "swatch": "#8c6239" },
+        { "id": "black-ash", "name": "Black Ash", "swatch": "#232325" }
+      ],
+      "imageKey": "formaLoungeChair",
+      "gallery": [
+        { "id": "angle-hero", "label": "Three-quarter view", "imageKey": "formaLoungeChair" },
+        { "id": "angle-front", "label": "Front profile", "imageKey": "formaFrontView" },
+        { "id": "angle-rear", "label": "Rear joinery", "imageKey": "formaRearView" },
+        { "id": "angle-detail", "label": "Bouclé & walnut grain", "imageKey": "formaMaterialDetail" }
+      ],
+      "summary": "Sculpted solid walnut frame paired with textured oatmeal bouclé cushions. Engineered for low-slung, restorative lounging.",
+      "specs": [
+        { "label": "FRAME", "value": "Kiln-dried solid American walnut with matte oil finish" },
+        { "label": "UPHOLSTERY", "value": "480gsm Belgian oatmeal bouclé blend, removable covers" },
+        { "label": "JOINERY", "value": "Exposed wedged mortise-and-tenon timber construction" },
+        { "label": "CARE", "value": "Dust dry weekly; vacuum fabric with soft upholstery brush" }
+      ]
+    },
+    {
+      "id": "luma-modular-sofa",
+      "sku": "LUM-004",
+      "name": "Luma modular sofa",
+      "category": "Seating",
+      "room": "Living room",
+      "collectionTag": "THE ESSENTIAL EDIT",
+      "price": 9800000,
+      "stock": 7,
+      "status": "Published",
+      "rating": 4.8,
+      "reviewsCount": 94,
+      "materials": ["Natural materials", "Linen blend", "Solid wood"],
+      "dimensions": {
+        "width": 224,
+        "depth": 94,
+        "height": 74,
+        "seatHeight": 41,
+        "boxSize": "230 x 100 x 78 cm"
+      },
+      "sizeTier": "Large (> 160cm)",
+      "finishes": [
+        { "id": "warm-linen", "name": "Warm Linen", "swatch": "#cbb38f" },
+        { "id": "charcoal-ash", "name": "Charcoal Black", "swatch": "#232325" }
+      ],
+      "imageKey": "lumaModularSofa",
+      "gallery": [
+        { "id": "luma-main", "label": "Full silhouette", "imageKey": "lumaModularSofa" },
+        { "id": "luma-fabric", "label": "Textile close-up", "imageKey": "formaMaterialDetail" },
+        { "id": "luma-room", "label": "Living space view", "imageKey": "heroLivingRoom" }
+      ],
+      "summary": "Generous three-seat modular silhouette anchored on recessed oak plinth legs. Deep cushions adapt effortlessly to your space.",
+      "specs": [
+        { "label": "FRAME", "value": "Solid kiln-dried white oak & reinforced webbing" },
+        { "label": "FILLING", "value": "High-resilience multi-density core wrapped in feather down" },
+        { "label": "UPHOLSTERY", "value": "Breathable 65% Belgian linen, 35% cotton weave" },
+        { "label": "MODULARITY", "value": "Concealed brass alligator clips lock sections securely" }
+      ]
+    },
+    {
+      "id": "arc-coffee-table",
+      "sku": "ARC-002",
+      "name": "Arc coffee table",
+      "category": "Tables",
+      "room": "Living room",
+      "collectionTag": "THE ESSENTIAL EDIT",
+      "price": 3450000,
+      "stock": 18,
+      "status": "Published",
+      "rating": 4.9,
+      "reviewsCount": 76,
+      "materials": ["Natural materials", "Solid wood"],
+      "dimensions": {
+        "width": 110,
+        "depth": 62,
+        "height": 36,
+        "seatHeight": 36,
+        "boxSize": "118 x 70 x 44 cm"
+      },
+      "sizeTier": "Medium (90-160cm)",
+      "finishes": [
+        { "id": "smoked-oak", "name": "Smoked oak", "swatch": "#7c5d41", "accent": "#c9b29b" },
+        { "id": "natural-ash", "name": "Natural ash", "swatch": "#d3c2a6", "accent": "#f1eae0" }
+      ],
+      "imageKey": "arcCoffeeTable",
+      "gallery": [
+        { "id": "arc-main", "label": "Primary angle", "imageKey": "arcCoffeeTable" },
+        { "id": "arc-grain", "label": "Wood surface grain", "imageKey": "formaMaterialDetail" }
+      ],
+      "summary": "Low architectural coffee table with softly chamfered edges and twin curved slab legs that lend lightness to compact living rooms.",
+      "specs": [
+        { "label": "TOP THICKNESS", "value": "28mm solid timber with bevelled underside edge" },
+        { "label": "FINISH", "value": "Zero-VOC hardwax matte botanical oil" },
+        { "label": "MAX LOAD", "value": "45 kg distributed weight" },
+        { "label": "ASSEMBLY", "value": "Ships flat-packed with 4-bolt tool-free leg key" }
+      ]
+    },
+    {
+      "id": "linea-sideboard",
+      "sku": "LIN-009",
+      "name": "Linea sideboard",
+      "category": "Storage",
+      "room": "Dining room",
+      "collectionTag": "THE NATURAL COLLECTION",
+      "price": 8900000,
+      "stock": 12,
+      "status": "Published",
+      "rating": 5.0,
+      "reviewsCount": 52,
+      "materials": ["Natural materials", "Solid wood"],
+      "dimensions": {
+        "width": 165,
+        "depth": 45,
+        "height": 78,
+        "seatHeight": 78,
+        "boxSize": "172 x 52 x 85 cm"
+      },
+      "sizeTier": "Large (> 160cm)",
+      "finishes": [
+        { "id": "teak-matte", "name": "Natural teak", "swatch": "#98693f", "accent": "#d8c2ab" },
+        { "id": "ebony-stain", "name": "Charcoal oak", "swatch": "#2c2927", "accent": "#75706b" }
+      ],
+      "imageKey": "lineaSideboard",
+      "gallery": [
+        { "id": "linea-main", "label": "Credenza elevation", "imageKey": "lineaSideboard" },
+        { "id": "linea-detail", "label": "Fluted grain detail", "imageKey": "formaMaterialDetail" }
+      ],
+      "summary": "Quiet horizontal proportions with push-to-open solid timber doors and adjustable interior shelves for diningware or audio equipment.",
+      "specs": [
+        { "label": "DOORS", "value": "Soft-close Blum European concealed hinges" },
+        { "label": "STORAGE", "value": "Three compartments with height-adjustable shelves & cable pass" },
+        { "label": "MATERIAL", "value": "FSC-certified solid teak & oak veneer core" },
+        { "label": "WEIGHT", "value": "48 kg (White-Glove delivery recommended)" }
+      ]
+    },
+    {
+      "id": "halo-floor-lamp",
+      "sku": "HAL-011",
+      "name": "Halo floor lamp",
+      "category": "Lighting",
+      "room": "Living room",
+      "collectionTag": "THE ESSENTIAL EDIT",
+      "price": 2150000,
+      "stock": 31,
+      "status": "Published",
+      "rating": 4.8,
+      "reviewsCount": 64,
+      "materials": ["Steel & stone", "Natural materials"],
+      "dimensions": {
+        "width": 34,
+        "depth": 34,
+        "height": 158,
+        "seatHeight": 158,
+        "boxSize": "42 x 42 x 165 cm"
+      },
+      "sizeTier": "Compact (< 90cm)",
+      "finishes": [
+        { "id": "matte-black-linen", "name": "Matte black & rice paper", "swatch": "#1f1f21", "accent": "#edeae2" },
+        { "id": "brushed-brass", "name": "Brushed brass", "swatch": "#b79658", "accent": "#f3efe6" }
+      ],
+      "imageKey": "haloFloorLamp",
+      "gallery": [
+        { "id": "halo-main", "label": "Full height view", "imageKey": "haloFloorLamp" }
+      ],
+      "summary": "Slender blackened steel stem crowned by a diffused linen drum shade that casts a warm 2700K architectural glow across evening rooms.",
+      "specs": [
+        { "label": "LIGHT SOURCE", "value": "Included warm dimmable LED E27 bulb (2700K)" },
+        { "label": "BASE", "value": "Weighted honed basalt stone cylinder for stability" },
+        { "label": "CORD", "value": "2.4m braided fabric cord with brass inline foot switch" },
+        { "label": "VOLTAGE", "value": "220-240V Indonesian standard Type-F plug" }
+      ]
+    },
+    {
+      "id": "grid-oak-shelf",
+      "sku": "GRD-007",
+      "name": "Grid oak shelf",
+      "category": "Storage",
+      "room": "Workspace",
+      "collectionTag": "THE NATURAL COLLECTION",
+      "price": 4200000,
+      "stock": 15,
+      "status": "Published",
+      "rating": 4.9,
+      "reviewsCount": 41,
+      "materials": ["Natural materials", "Solid wood"],
+      "dimensions": {
+        "width": 120,
+        "depth": 36,
+        "height": 145,
+        "seatHeight": 145,
+        "boxSize": "150 x 44 x 24 cm"
+      },
+      "sizeTier": "Medium (90-160cm)",
+      "finishes": [
+        { "id": "white-oak", "name": "Natural white oak", "swatch": "#cbb38f", "accent": "#f1ede4" },
+        { "id": "walnut-oak", "name": "Smoked walnut", "swatch": "#6d4c33", "accent": "#baa590" }
+      ],
+      "imageKey": "gridOakShelf",
+      "gallery": [
+        { "id": "grid-main", "label": "Open shelving view", "imageKey": "gridOakShelf" }
+      ],
+      "summary": "Open rhythmic grid shelving system crafted from solid European oak, doubling naturally as a sculptural library wall or room divider.",
+      "specs": [
+        { "label": "SHELF THICKNESS", "value": "22mm solid oak rails with brass dowel pins" },
+        { "label": "BAY HEIGHT", "value": "33 cm clearance, fits vinyl records & oversized art books" },
+        { "label": "CAPACITY", "value": "25 kg per bay" },
+        { "label": "WALL ANCHOR", "value": "Discrete brushed-steel anti-tip bracket included" }
+      ]
+    },
+    {
+      "id": "fold-dining-chair",
+      "sku": "FLD-003",
+      "name": "Fold dining chair",
+      "category": "Seating",
+      "room": "Dining room",
+      "collectionTag": "THE NATURAL COLLECTION",
+      "price": 1950000,
+      "stock": 29,
+      "status": "Published",
+      "rating": 4.7,
+      "reviewsCount": 83,
+      "materials": ["Natural materials", "Solid wood"],
+      "dimensions": {
+        "width": 49,
+        "depth": 52,
+        "height": 79,
+        "seatHeight": 45,
+        "boxSize": "56 x 58 x 86 cm"
+      },
+      "sizeTier": "Compact (< 90cm)",
+      "finishes": [
+        { "id": "steam-ash", "name": "Steam-bent ash", "swatch": "#cbb38f", "accent": "#f0ece3" },
+        { "id": "blackened-ash", "name": "Blackened ash", "swatch": "#222224", "accent": "#626268" }
+      ],
+      "imageKey": "foldDiningChair",
+      "gallery": [
+        { "id": "fold-main", "label": "Dining profile", "imageKey": "foldDiningChair" }
+      ],
+      "summary": "Featherweight yet tactile dining chair featuring a contoured steam-bent backrest that supports hours of unhurried dinner conversation.",
+      "specs": [
+        { "label": "WOOD", "value": "Solid German beech or European white ash" },
+        { "label": "STACKABLE", "value": "Up to 4 chairs neatly stacked with felt pads" },
+        { "label": "SEAT HEIGHT", "value": "45 cm, calibrated for 74-76 cm dining tables" },
+        { "label": "WEIGHT", "value": "4.6 kg per chair" }
+      ]
+    },
+    {
+      "id": "studio-writing-desk",
+      "sku": "STD-008",
+      "name": "Studio writing desk",
+      "category": "Tables",
+      "room": "Workspace",
+      "collectionTag": "THE ESSENTIAL EDIT",
+      "price": 5600000,
+      "stock": 11,
+      "status": "Published",
+      "rating": 4.9,
+      "reviewsCount": 68,
+      "materials": ["Natural materials", "Solid wood", "Steel & stone"],
+      "dimensions": {
+        "width": 140,
+        "depth": 68,
+        "height": 75,
+        "seatHeight": 75,
+        "boxSize": "148 x 76 x 22 cm"
+      },
+      "sizeTier": "Medium (90-160cm)",
+      "finishes": [
+        { "id": "walnut-slate", "name": "Walnut & slate", "swatch": "#745137", "accent": "#3d3d42" },
+        { "id": "oak-ivory", "name": "White oak", "swatch": "#cbb38f", "accent": "#f1ede4" }
+      ],
+      "imageKey": "studioWritingDesk",
+      "gallery": [
+        { "id": "studio-main", "label": "Desk perspective", "imageKey": "studioWritingDesk" }
+      ],
+      "summary": "Architectural study desk featuring a concealed cable trough, two dovetailed stationery drawers, and tapered splayed solid timber legs.",
+      "specs": [
+        { "label": "CABLE MANAGEMENT", "value": "Full-width leather-lined flip tray along rear edge" },
+        { "label": "DRAWERS", "value": "Two soft-close drawers lined in charcoal wool felt" },
+        { "label": "WORK SURFACE", "value": "Satin-matte urethane resistant to coffee & fountain ink" },
+        { "label": "DIMENSIONS", "value": "140 x 68 x 75 cm (knee clearance 64 cm)" }
+      ]
+    },
+    {
+      "id": "nook-platform-bed",
+      "sku": "NOK-010",
+      "name": "Nook platform bed",
+      "category": "Bedroom",
+      "room": "Bedroom",
+      "collectionTag": "THE NATURAL COLLECTION",
+      "price": 9400000,
+      "stock": 10,
+      "status": "Published",
+      "rating": 4.9,
+      "reviewsCount": 47,
+      "materials": ["Natural materials", "Solid wood"],
+      "dimensions": {
+        "width": 188,
+        "depth": 214,
+        "height": 88,
+        "seatHeight": 32,
+        "boxSize": "205 x 46 x 38 cm (2 boxes)"
+      },
+      "sizeTier": "Large (> 160cm)",
+      "finishes": [
+        { "id": "natural-oak-linen", "name": "White oak", "swatch": "#c5ab87", "accent": "#ece7de" },
+        { "id": "walnut-bed", "name": "American walnut", "swatch": "#724f34", "accent": "#b7a189" }
+      ],
+      "imageKey": "nookPlatformBed",
+      "gallery": [
+        { "id": "nook-main", "label": "Queen platform view", "imageKey": "nookPlatformBed" }
+      ],
+      "summary": "Grounded Japanese-inspired timber platform frame with recessed floating legs and a gently angled solid oak headboard for restful nights.",
+      "specs": [
+        { "label": "MATTRESS FIT", "value": "Indonesian Queen (160 x 200 cm) & King adapters" },
+        { "label": "SLATS", "value": "Silent birch plywood slats with wool anti-squeak felt tape" },
+        { "label": "CLEARANCE", "value": "18 cm under-bed visual reveal" },
+        { "label": "ASSEMBLY", "value": "15-minute corner-lock brass joinery" }
+      ]
+    },
+    {
+      "id": "terra-dining-stool",
+      "sku": "TER-012",
+      "name": "Terra dining stool",
+      "category": "Seating",
+      "room": "Dining room",
+      "collectionTag": "THE NATURAL COLLECTION",
+      "price": 850000,
+      "stock": 0,
+      "status": "Out of stock",
+      "rating": 4.8,
+      "reviewsCount": 35,
+      "materials": ["Natural materials", "Solid wood"],
+      "dimensions": {
+        "width": 38,
+        "depth": 38,
+        "height": 46,
+        "seatHeight": 46,
+        "boxSize": "44 x 44 x 52 cm"
+      },
+      "sizeTier": "Compact (< 90cm)",
+      "finishes": [
+        { "id": "teak-raw", "name": "Raw teak", "swatch": "#966b43", "accent": "#d8c5ae" }
+      ],
+      "imageKey": "foldDiningChair",
+      "gallery": [
+        { "id": "terra-main", "label": "Turned wood stool", "imageKey": "foldDiningChair" }
+      ],
+      "summary": "Turned solid Java teak stool crafted from reclaimed timber offcuts. Ideal as extra guest seating or an understated bedside perch.",
+      "specs": [
+        { "label": "WOOD", "value": "100% reclaimed solid Java teak" },
+        { "label": "SEAT DIAMETER", "value": "35 cm subtly dished circular top" },
+        { "label": "WEIGHT", "value": "5.2 kg solid turnery" },
+        { "label": "RESTOCK ETA", "value": "Batch 04 arriving early next month" }
+      ]
+    }
+  ]
+}

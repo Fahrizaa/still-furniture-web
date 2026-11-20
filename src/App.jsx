@@ -1,15 +1,21 @@
 /**
- * @fileoverview Komponen Root (`App.jsx`) Pengendali State Global & Navigasi STILL.
+ * @fileoverview Komponen Root (`App.jsx`) dengan Multi-Page App Router, Simulasi Fetch API, & Lokalisasi (ID/EN).
  *
- * File ini menjadi pusat koordinasi seluruh aplikasi React STILL:
- * 1. Mengelola rute halaman aktif (`home`, `shop`, `product`, `checkout`, `seller-inventory`, `seller-studio`).
- * 2. Menyimpan state katalog produk yang dibagikan antara Storefront Pembeli & Seller Inventory (CRUD + Stok live).
- * 3. Menyimpan state Tas Belanja (`cartItems`) mulai dari tambah cepat, ubah qty, hingga checkout.
- * 4. Mengendalikan semua overlay/modal global (`CartDrawer`, `ConciergeDrawer`, `ScaleModal`,
- *    `OrderReservedModal`, `DeleteConfirmModal`, `ProductSavedModal`, `StorefrontPreviewModal`, `SignInModal`).
+ * Arsitektur Utama:
+ * 1. Multi-page Routing (`Routes` & `Route` dari `react-router-dom`):
+ *    - `/` : Halaman Utama (`HomePage`)
+ *    - `/shop` : Halaman Katalog & Filter (`ShopPage`)
+ *    - `/product/:id` : Halaman Detail Produk Dinamis (`ProductDetailPage`)
+ *    - `/checkout` : Halaman Pembayaran (`CheckoutPage`)
+ *    - `/seller/inventory` : Halaman Inventaris Penjual (`SellerInventoryPage`)
+ *    - `/seller/studio` : Halaman Studio Tambah/Edit Produk (`SellerStudioPage`)
+ * 2. Konsumsi Data API & Data Contract (`/api/products.json` via `fetchProductsCatalog()`):
+ *    - Mengelola state `isLoading` (Loading Skeleton) dan `apiError` (Error State + Retry).
+ * 3. Pengaturan Bahasa (`id` Bahasa Indonesia & `en` English).
  */
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import Footer from './components/Footer'
 import Navbar from './components/Navbar'
 import {
@@ -22,71 +28,89 @@ import {
 import CartDrawer from './components/overlays/CartDrawer'
 import ConciergeDrawer from './components/overlays/ConciergeDrawer'
 import ScaleModal from './components/overlays/ScaleModal'
+import { ApiSimulationBar } from './components/ui/ApiStateViews'
 import {
   INITIAL_PRODUCTS,
   clearDummySession,
   loadDummySession,
   saveDummySession,
 } from './data/furnitureData'
+import {
+  TRANSLATIONS,
+  loadSavedLanguage,
+  saveLanguagePreference,
+} from './data/translations'
 import CheckoutPage from './pages/CheckoutPage'
 import HomePage from './pages/HomePage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import SellerInventoryPage from './pages/SellerInventoryPage'
 import SellerStudioPage from './pages/SellerStudioPage'
 import ShopPage from './pages/ShopPage'
+import { fetchProductsCatalog } from './services/productApi'
 
 /**
- * Konfigurasi filter awal untuk halaman Shop (`02 — Shop / Discover furniture`).
+ * Mengonversi nama rute logis maupun path menjadi URL path standar React Router.
+ *
+ * @param {string} target - Nama halaman atau path tujuan.
+ * @param {object} [options={}] - Opsi tambahan seperti `productId` atau filter query.
+ * @returns {string} Path URL tujuan.
  */
-const DEFAULT_SHOP_FILTERS = {
-  searchQuery: '',
-  categories: [],
-  materials: [],
-  rooms: [],
-  priceMin: 500000,
-  priceMax: 10000000,
-  sizeTier: 'All sizes',
-  sortBy: 'featured',
+function resolveRoutePath(target, options = {}) {
+  if (target === 'home' || target === '/') return '/'
+  if (target === 'shop' || target === '/shop') {
+    const params = new URLSearchParams()
+    if (options.roomFilter) params.set('room', options.roomFilter)
+    if (options.categories?.[0]) params.set('category', options.categories[0])
+    if (options.searchQuery) params.set('q', options.searchQuery)
+    const qs = params.toString()
+    return qs ? `/shop?${qs}` : '/shop'
+  }
+  if (target === 'product' || target.startsWith('/product')) {
+    const pid = options.productId || 'forma-lounge-chair'
+    return `/product/${pid}`
+  }
+  if (target === 'checkout' || target === '/checkout') return '/checkout'
+  if (target === 'seller-inventory' || target === '/seller/inventory') return '/seller/inventory'
+  if (target === 'seller-studio' || target === '/seller/studio') return '/seller/studio'
+  return target.startsWith('/') ? target : '/'
 }
 
 /**
- * Komponen utama aplikasi STILL yang menghubungkan seluruh layar Figma Storefront & Seller Studio.
+ * Komponen utama aplikasi STILL yang mengoordinasikan App Router, Fetch API, Keranjang, dan Autentikasi.
  *
- * @returns {JSX.Element} Pohon komponen utama aplikasi React.
+ * @returns {JSX.Element} Pohon komponen aplikasi React.
  */
 export default function App() {
-  // State navigasi halaman aktif & sesi autentikasi dummy ('customer' | 'seller' | null)
-  const [currentPage, setCurrentPage] = useState('home')
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // State bahasa antarmuka ('id' | 'en')
+  const [lang, setLang] = useState(() => loadSavedLanguage())
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.id
+
+  // State sesi autentikasi dummy ('customer' | 'seller' | null)
   const [currentUser, setCurrentUser] = useState(() => loadDummySession())
 
-  // State katalog produk bersama (perubahan di Seller Inventory/Studio langsung terlihat di Shop & Home)
+  // State produk dari API JSON Contract beserta state Loading & Error
   const [products, setProducts] = useState(INITIAL_PRODUCTS)
-  const [activeProductId, setActiveProductId] = useState('forma-lounge-chair')
+  const [isLoadingApi, setIsLoadingApi] = useState(true)
+  const [apiError, setApiError] = useState(null)
+
   const [editingProductId, setEditingProductId] = useState(null)
 
-  // State filter halaman Shop
-  const [shopFilters, setShopFilters] = useState(DEFAULT_SHOP_FILTERS)
-
-  // State Tas Belanja (diawali 1 unit Forma lounge chair agar lencana '01' tampil sesuai Figma 01)
-  const [cartItems, setCartItems] = useState(() => {
-    const starter = INITIAL_PRODUCTS[0]
-    return [
-      {
-        productId: starter.id,
-        sku: starter.sku,
-        name: starter.name,
-        price: starter.price,
-        qty: 1,
-        finishName: starter.finishes[0].name,
-        image: starter.image,
-      },
-    ]
-  })
+  // State Tas Belanja (dimulai dari 0 item)
+  const [cartItems, setCartItems] = useState([])
 
   // State buka/tutup drawer & modal
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
-  const [conciergeState, setConciergeState] = useState({ isOpen: false, product: INITIAL_PRODUCTS[0] })
-  const [scaleState, setScaleState] = useState({ isOpen: false, product: INITIAL_PRODUCTS[0] })
+  const [conciergeState, setConciergeState] = useState({
+    isOpen: false,
+    product: INITIAL_PRODUCTS[0],
+  })
+  const [scaleState, setScaleState] = useState({
+    isOpen: false,
+    product: INITIAL_PRODUCTS[0],
+  })
   const [signInDialog, setSignInDialog] = useState({
     isOpen: false,
     initialRole: 'customer',
@@ -99,48 +123,73 @@ export default function App() {
   const [studioPreviewProduct, setStudioPreviewProduct] = useState(null)
 
   /**
-   * Berpindah ke halaman tujuan dengan dukungan opsi filter awal, scroll section, dan proteksi rute Penjual.
+   * Memanggil endpoint JSON contract (`/api/products.json`) dan memperbarui state `products`,
+   * `isLoadingApi`, serta `apiError`.
    *
-   * @param {string} targetPage - Halaman tujuan (`home`, `shop`, `product`, `checkout`, `seller-inventory`, `seller-studio`).
-   * @param {object} [options={}] - Opsi navigasi tambahan (filter shop, ID produk, target scroll, atau bypass guard setelah login).
+   * @param {boolean} [shouldFail=false] - Opsi untuk menyimulasikan kegagalan respons server API.
+   */
+  const loadCatalogFromApi = useCallback(async (shouldFail = false) => {
+    setIsLoadingApi(true)
+    setApiError(null)
+    try {
+      const result = await fetchProductsCatalog({ shouldFail })
+      setProducts(result.products)
+    } catch (err) {
+      setApiError(err?.message || 'Unknown API Error')
+    } finally {
+      setIsLoadingApi(false)
+    }
+  }, [])
+
+  // Memuat data produk dari API contract saat aplikasi pertama kali dijalankan
+  useEffect(() => {
+    let cancelled = false
+    fetchProductsCatalog({ shouldFail: false })
+      .then((result) => {
+        if (!cancelled) setProducts(result.products)
+      })
+      .catch((err) => {
+        if (!cancelled) setApiError(err?.message || 'Unknown API Error')
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingApi(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  /**
+   * Mengganti bahasa aktif antara Bahasa Indonesia (`id`) dan Bahasa Inggris (`en`).
+   */
+  const handleToggleLanguage = () => {
+    const nextLang = lang === 'id' ? 'en' : 'id'
+    setLang(nextLang)
+    saveLanguagePreference(nextLang)
+  }
+
+  /**
+   * Menavigasi ke halaman tujuan menggunakan React Router dengan proteksi rute khusus Seller Workspace.
+   *
+   * @param {string} targetPage - Nama halaman atau URL path tujuan.
+   * @param {object} [options={}] - Opsi parameter rute atau bypass guard setelah login.
    */
   const navigateToPage = (targetPage, options = {}) => {
-    const isSellerTarget = targetPage === 'seller-inventory' || targetPage === 'seller-studio'
+    const resolvedPath = resolveRoutePath(targetPage, options)
+    const isSellerTarget = resolvedPath.startsWith('/seller')
+
     if (isSellerTarget && !options.bypassAuthCheck && currentUser?.role !== 'seller') {
       setSignInDialog({
         isOpen: true,
         initialRole: 'seller',
         notice: 'Silakan Sign In memakai akun demo Penjual untuk membuka Seller Workspace.',
-        redirectPage: targetPage,
+        redirectPage: resolvedPath,
       })
       return
     }
 
-    if (options.productId) {
-      setActiveProductId(options.productId)
-    }
-
-    if (options.clearFilters) {
-      setShopFilters(DEFAULT_SHOP_FILTERS)
-    } else if (targetPage === 'shop') {
-      const nextFilters = { ...DEFAULT_SHOP_FILTERS }
-      if (options.roomFilter) nextFilters.rooms = [options.roomFilter]
-      if (options.materialFilter) nextFilters.materials = [options.materialFilter]
-      if (options.categories) nextFilters.categories = options.categories
-      if (options.searchQuery !== undefined) nextFilters.searchQuery = options.searchQuery
-      setShopFilters(nextFilters)
-    }
-
-    setCurrentPage(targetPage)
-
-    if (options.scrollToId) {
-      setTimeout(() => {
-        const el = document.getElementById(options.scrollToId)
-        if (el) el.scrollIntoView({ behavior: 'smooth' })
-      }, 60)
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
+    navigate(resolvedPath)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   /**
@@ -159,7 +208,7 @@ export default function App() {
   }
 
   /**
-   * Menyimpan sesi akun dummy setelah kredensial tervalidasi dan menavigasi ke halaman sesuai peran.
+   * Menyimpan sesi akun dummy setelah kredensial tervalidasi dan menavigasi ke rute sesuai peran.
    *
    * @param {object} authenticatedUser - Objek user Pembeli/Penjual dari `authenticateDummyAccount()`.
    */
@@ -170,56 +219,28 @@ export default function App() {
     setSignInDialog({ isOpen: false, initialRole: 'customer', notice: '', redirectPage: null })
 
     if (authenticatedUser.role === 'seller') {
-      const target = pendingRedirect || 'seller-inventory'
-      if (target === 'seller-studio') setEditingProductId(null)
+      const target = pendingRedirect || '/seller/inventory'
+      if (target.includes('studio')) setEditingProductId(null)
       navigateToPage(target, { bypassAuthCheck: true })
-    } else if (currentPage === 'seller-inventory' || currentPage === 'seller-studio') {
-      navigateToPage('home')
+    } else if (location.pathname.startsWith('/seller')) {
+      navigate('/')
     }
   }
 
   /**
-   * Mengakhiri sesi akun dummy saat ini dan mengembalikan tampilan ke Storefront tamu.
+   * Mengakhiri sesi akun dummy saat ini dan mengembalikan tampilan ke Storefront utama.
    */
   const handleSignOut = () => {
     clearDummySession()
     setCurrentUser(null)
     setSignInDialog({ isOpen: false, initialRole: 'customer', notice: '', redirectPage: null })
-    if (currentPage === 'seller-inventory' || currentPage === 'seller-studio') {
-      navigateToPage('home')
+    if (location.pathname.startsWith('/seller')) {
+      navigate('/')
     }
   }
 
   /**
-   * Membuka halaman detail produk (`03 Product Detail`) untuk ID tertentu.
-   *
-   * @param {string} productId - ID produk yang diklik pengguna.
-   */
-  const handleSelectProduct = (productId) => {
-    navigateToPage('product', { productId })
-  }
-
-  /**
-   * Mengirim kata kunci pencarian dari Navbar dan langsung membuka halaman Shop.
-   *
-   * @param {string} query - Teks kata kunci pencarian pengguna.
-   */
-  const handleNavbarSearch = (query) => {
-    navigateToPage('shop', { searchQuery: query })
-  }
-
-  /**
-   * Memperbarui sebagian nilai state filter Shop tanpa menimpa field filter lain.
-   *
-   * @param {object} patch - Objek berisi field filter yang ingin diperbarui.
-   */
-  const handleUpdateShopFilters = (patch) => {
-    setShopFilters((prev) => ({ ...prev, ...patch }))
-  }
-
-  /**
-   * Menambahkan produk furnitur (beserta varian finish) ke tas belanja,
-   * atau menjumlahkan qty jika kombinasi produk + finish yang sama sudah ada.
+   * Menambahkan produk furnitur (beserta varian finish) ke tas belanja.
    *
    * @param {object} product - Objek produk yang ditambahkan.
    * @param {number} [qtyToAdd=1] - Jumlah unit yang ditambahkan.
@@ -253,7 +274,7 @@ export default function App() {
   }
 
   /**
-   * Mengubah kuantitas satu item di dalam keranjang belanja (atau menghapusnya jika qty mencapai 0).
+   * Mengubah kuantitas satu item di dalam keranjang belanja.
    *
    * @param {string} productId - ID produk target.
    * @param {string} finishName - Varian finishing item.
@@ -294,8 +315,7 @@ export default function App() {
   }
 
   /**
-   * Menyesuaikan angka stok secara inline pada tabel Seller Inventory (`− / +`),
-   * sekaligus membatasi minimum stok ke angka 0 agar tidak bernilai negatif.
+   * Menyesuaikan angka stok secara inline pada tabel Seller Inventory (`− / +`).
    *
    * @param {string} productId - ID produk yang stoknya diperbarui.
    * @param {number} delta - Perubahan stok (`+1` atau `-1`).
@@ -309,7 +329,7 @@ export default function App() {
   }
 
   /**
-   * Menghapus produk secara permanen dari katalog & keranjang setelah disetujui via DeleteConfirmModal.
+   * Menghapus produk dari katalog & keranjang setelah disetujui via DeleteConfirmModal.
    *
    * @param {string} productId - ID produk yang dihapus.
    */
@@ -320,7 +340,7 @@ export default function App() {
   }
 
   /**
-   * Menyimpan produk baru atau hasil penyuntingan dari Seller Studio ke daftar katalog global.
+   * Menyimpan produk baru atau hasil penyuntingan dari Seller Studio ke state katalog.
    *
    * @param {object} savedPayload - Objek produk baru/terbarui dari SellerStudioPage.
    * @param {boolean} isEdit - Penanda apakah operasi memperbarui produk lama (`true`) atau menambah baru (`false`).
@@ -340,130 +360,163 @@ export default function App() {
     })
   }
 
-  // Menghitung produk detail aktif + 3 rekomendasi produk lain untuk ProductDetailPage
-  const activeProduct = products.find((p) => p.id === activeProductId) || products[0]
-  const relatedProducts = products
-    .filter((p) => p.id !== activeProduct?.id && p.status !== 'Draft' && p.stock > 0)
-    .slice(0, 3)
-
-  // Produk target ketika Seller Studio dibuka dalam mode Edit Existing
   const editingProduct = editingProductId
     ? products.find((p) => p.id === editingProductId) || null
     : null
 
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.qty, 0)
-  const isSellerWorkspace =
-    currentPage === 'seller-inventory' || currentPage === 'seller-studio'
+  const isSellerWorkspace = location.pathname.startsWith('/seller')
 
   return (
     <div className="min-h-screen bg-white text-[#111111]">
-      {/* Tampilkan Header Storefront hanya pada rute pembeli (01 - 04) */}
+      {/* Header Storefront & Toolbar Simulasi API */}
       {!isSellerWorkspace ? (
-        <Navbar
-          currentPage={currentPage}
-          onNavigate={navigateToPage}
-          cartCount={totalCartCount}
-          onOpenCart={() => setCartDrawerOpen(true)}
-          onOpenSignIn={() => openSignInDialog(currentUser?.role || 'customer')}
-          onSearchSubmit={handleNavbarSearch}
-          currentUser={currentUser}
-        />
+        <>
+          <Navbar
+            cartCount={totalCartCount}
+            onNavigate={navigateToPage}
+            onOpenCart={() => setCartDrawerOpen(true)}
+            onOpenSignIn={() => openSignInDialog(currentUser?.role || 'customer')}
+            onOpenConcierge={() =>
+              setConciergeState({ isOpen: true, product: products[0] })
+            }
+            currentUser={currentUser}
+            lang={lang}
+            onToggleLang={handleToggleLanguage}
+            t={t}
+          />
+          <ApiSimulationBar
+            t={t}
+            isLoading={isLoadingApi}
+            hasError={Boolean(apiError)}
+            onTriggerRefetch={() => loadCatalogFromApi(false)}
+            onTriggerError={() => loadCatalogFromApi(true)}
+          />
+        </>
       ) : null}
 
-      {/* Pemilih Halaman Aktif */}
-      {currentPage === 'home' ? (
-        <HomePage
-          products={products}
-          onNavigate={navigateToPage}
-          onSelectProduct={handleSelectProduct}
-          onAddToCart={handleAddToCart}
-        />
-      ) : null}
-
-      {currentPage === 'shop' ? (
-        <ShopPage
-          products={products}
-          filters={shopFilters}
-          onUpdateFilters={handleUpdateShopFilters}
-          onResetFilters={() => setShopFilters(DEFAULT_SHOP_FILTERS)}
-          onSelectProduct={handleSelectProduct}
-          onAddToCart={handleAddToCart}
-        />
-      ) : null}
-
-      {currentPage === 'product' && activeProduct ? (
-        <ProductDetailPage
-          key={activeProduct.id}
-          product={activeProduct}
-          relatedProducts={relatedProducts}
-          onNavigate={navigateToPage}
-          onSelectProduct={handleSelectProduct}
-          onAddToCart={handleAddToCart}
-          onOpenScale={(prod) => setScaleState({ isOpen: true, product: prod })}
-          onOpenConcierge={(prod) => setConciergeState({ isOpen: true, product: prod })}
-        />
-      ) : null}
-
-      {currentPage === 'checkout' ? (
-        <CheckoutPage
-          key={currentUser?.email || 'guest-checkout'}
-          cartItems={cartItems}
-          onUpdateQty={handleUpdateCartQty}
-          onNavigate={navigateToPage}
-          onPlaceOrder={handlePlaceOrder}
-          currentUser={currentUser}
-          onOpenConcierge={() =>
-            setConciergeState({
-              isOpen: true,
-              product:
-                products.find((p) => p.id === cartItems[0]?.productId) || activeProduct,
-            })
+      {/* MULTI-PAGE APP ROUTER */}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <HomePage
+              products={products}
+              isLoading={isLoadingApi}
+              apiError={apiError}
+              onRetryFetch={() => loadCatalogFromApi(false)}
+              onAddToCart={handleAddToCart}
+              t={t}
+            />
           }
         />
-      ) : null}
 
-      {currentPage === 'seller-inventory' ? (
-        <SellerInventoryPage
-          products={products}
-          onAdjustStock={handleAdjustStock}
-          onAddNew={() => {
-            setEditingProductId(null)
-            navigateToPage('seller-studio')
-          }}
-          onEditProduct={(productId) => {
-            setEditingProductId(productId)
-            navigateToPage('seller-studio')
-          }}
-          onRequestDelete={(prod) => setDeleteTarget(prod)}
-          onViewStorefront={() => navigateToPage('home')}
-          onNavigate={navigateToPage}
-          currentUser={currentUser}
-          onSignOut={handleSignOut}
+        <Route
+          path="/shop"
+          element={
+            <ShopPage
+              products={products}
+              isLoading={isLoadingApi}
+              apiError={apiError}
+              onRetryFetch={() => loadCatalogFromApi(false)}
+              onAddToCart={handleAddToCart}
+              t={t}
+            />
+          }
         />
-      ) : null}
 
-      {currentPage === 'seller-studio' ? (
-        <SellerStudioPage
-          key={editingProductId || 'new-piece'}
-          products={products}
-          editingProduct={editingProduct}
-          onSwitchEditTarget={(productId) => setEditingProductId(productId)}
-          onSaveProduct={handleSaveStudioProduct}
-          onOpenPreviewModal={(draft) => setStudioPreviewProduct(draft)}
-          onBackToInventory={() => navigateToPage('seller-inventory')}
-          onViewStorefront={() => navigateToPage('home')}
-          currentUser={currentUser}
-          onSignOut={handleSignOut}
+        <Route
+          path="/product/:id"
+          element={
+            <ProductDetailPage
+              products={products}
+              isLoading={isLoadingApi}
+              apiError={apiError}
+              onRetryFetch={() => loadCatalogFromApi(false)}
+              onAddToCart={handleAddToCart}
+              onOpenScale={(prod) => setScaleState({ isOpen: true, product: prod })}
+              onOpenConcierge={(prod) => setConciergeState({ isOpen: true, product: prod })}
+              t={t}
+            />
+          }
         />
-      ) : null}
+
+        <Route
+          path="/checkout"
+          element={
+            <CheckoutPage
+              key={currentUser?.email || 'guest-checkout'}
+              cartItems={cartItems}
+              onUpdateQty={handleUpdateCartQty}
+              onNavigate={navigateToPage}
+              onPlaceOrder={handlePlaceOrder}
+              currentUser={currentUser}
+              onOpenConcierge={() =>
+                setConciergeState({
+                  isOpen: true,
+                  product:
+                    products.find((p) => p.id === cartItems[0]?.productId) || products[0],
+                })
+              }
+            />
+          }
+        />
+
+        <Route
+          path="/seller/inventory"
+          element={
+            <SellerInventoryPage
+              products={products}
+              onAdjustStock={handleAdjustStock}
+              onAddNew={() => {
+                setEditingProductId(null)
+                navigate('/seller/studio')
+              }}
+              onEditProduct={(productId) => {
+                setEditingProductId(productId)
+                navigate('/seller/studio')
+              }}
+              onRequestDelete={(prod) => setDeleteTarget(prod)}
+              onViewStorefront={() => navigate('/')}
+              onNavigate={navigateToPage}
+              currentUser={currentUser}
+              onSignOut={handleSignOut}
+            />
+          }
+        />
+
+        <Route
+          path="/seller/studio"
+          element={
+            <SellerStudioPage
+              key={editingProductId || 'new-piece'}
+              products={products}
+              editingProduct={editingProduct}
+              onSwitchEditTarget={(productId) => setEditingProductId(productId)}
+              onSaveProduct={handleSaveStudioProduct}
+              onOpenPreviewModal={(draft) => setStudioPreviewProduct(draft)}
+              onBackToInventory={() => navigate('/seller/inventory')}
+              onViewStorefront={() => navigate('/')}
+              currentUser={currentUser}
+              onSignOut={handleSignOut}
+            />
+          }
+        />
+      </Routes>
 
       {/* Footer Storefront */}
       {!isSellerWorkspace ? (
         <Footer
           onNavigate={navigateToPage}
           onOpenConcierge={() =>
-            setConciergeState({ isOpen: true, product: activeProduct })
+            setConciergeState({ isOpen: true, product: products[0] })
           }
+          onOpenSignIn={() => openSignInDialog(currentUser?.role || 'customer')}
+          onOpenCart={() => setCartDrawerOpen(true)}
+          currentUser={currentUser}
+          lang={lang}
+          onToggleLang={handleToggleLanguage}
+          t={t}
         />
       ) : null}
 
@@ -474,31 +527,31 @@ export default function App() {
         cartItems={cartItems}
         onUpdateQty={handleUpdateCartQty}
         onRemoveItem={handleRemoveCartItem}
-        onProceedCheckout={() => navigateToPage('checkout')}
-        onGoShop={() => navigateToPage('shop', { clearFilters: true })}
+        onProceedCheckout={() => navigate('/checkout')}
+        onGoShop={() => navigate('/shop')}
       />
 
       <ConciergeDrawer
         isOpen={conciergeState.isOpen}
         onClose={() => setConciergeState((prev) => ({ ...prev, isOpen: false }))}
-        product={conciergeState.product || activeProduct}
+        product={conciergeState.product || products[0]}
       />
 
       <ScaleModal
         isOpen={scaleState.isOpen}
         onClose={() => setScaleState((prev) => ({ ...prev, isOpen: false }))}
-        product={scaleState.product || activeProduct}
+        product={scaleState.product || products[0]}
       />
 
       <OrderReservedModal
         orderSummary={reservedOrder}
         onClose={() => {
           setReservedOrder(null)
-          navigateToPage('home')
+          navigate('/')
         }}
         onContinueShopping={() => {
           setReservedOrder(null)
-          navigateToPage('shop', { clearFilters: true })
+          navigate('/shop')
         }}
       />
 
@@ -512,11 +565,11 @@ export default function App() {
         savedInfo={savedProductInfo}
         onBackToInventory={() => {
           setSavedProductInfo(null)
-          navigateToPage('seller-inventory')
+          navigate('/seller/inventory')
         }}
         onViewInStorefront={(productId) => {
           setSavedProductInfo(null)
-          navigateToPage('product', { productId })
+          navigate(`/product/${productId}`)
         }}
       />
 

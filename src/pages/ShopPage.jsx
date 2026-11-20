@@ -1,17 +1,18 @@
 /**
- * @fileoverview Halaman Katalog & Filter Belanja (`02 — Shop / Discover furniture`).
+ * @fileoverview Halaman Katalog & Filter Belanja (`/shop`).
  *
- * Fitur lengkap sesuai Figma Screen 02:
- * - Bilah pencarian real-time berdasarkan nama produk, SKU, maupun material.
- * - Chip filter aktif yang dapat dihapus satu per satu atau dikosongkan sekaligus (`Clear all`).
- * - Sidebar filter kategori (dengan hitung jumlah produk), dual-handle slider rentang harga
- *   (`Rp 500.000` – `Rp 10.000.000`), material, tipe ruangan, dan filter ukuran.
- * - Pengurutan (`Featured`, `Price: Low to High`, `Price: High to Low`, `Newest`) + paginasi grid 3 kolom.
+ * Fitur yang diterapkan:
+ * - Terintegrasi dengan URL Query Parameters (`?q=`, `?room=`, `?category=`) menggunakan `useSearchParams`
+ *   dari React Router agar tautan dari Navbar, Search Bar, dan Beranda langsung menyaring katalog.
+ * - Menampilkan `ProductGridSkeleton` saat data sedang dimuat dari API dan `ApiErrorState` bila gagal.
+ * - Mendukung bahasa Indonesia (`id`) dan Inggris (`en`).
  */
 
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ICONS } from '../assets/assetMap'
 import ProductCard from '../components/ProductCard'
+import { ApiErrorState, ProductGridSkeleton } from '../components/ui/ApiStateViews'
 import { formatCompactPrice, formatRupiah } from '../data/furnitureData'
 
 const ITEMS_PER_PAGE = 9
@@ -20,63 +21,139 @@ const MAX_PRICE_BOUND = 10000000
 const PRICE_STEP = 250000
 
 /**
- * Merender halaman katalog Shop beserta seluruh kontrol pencarian, filter bertingkat, dan paginasi.
+ * Merender halaman katalog `/shop` dengan sinkronisasi URL query params & penanganan state API.
  *
  * @param {object} props - Properti ShopPage.
- * @param {Array<object>} props.products - Daftar seluruh produk di aplikasi.
- * @param {object} props.filters - State filter aktif dari parent (`searchQuery`, `categories`, `materials`, `rooms`, `priceMin`, `priceMax`, `sizeTier`, `sortBy`).
- * @param {Function} props.onUpdateFilters - Handler untuk mengubah nilai filter.
- * @param {Function} props.onResetFilters - Handler mengembalikan seluruh filter ke kondisi default.
- * @param {Function} props.onSelectProduct - Handler berpindah ke halaman Detail Produk.
+ * @param {Array<object>} props.products - Daftar seluruh produk dari API contract.
+ * @param {boolean} props.isLoading - Status loading pemanggilan data API.
+ * @param {string | null} props.apiError - Pesan error jika pemanggilan API gagal.
+ * @param {Function} props.onRetryFetch - Handler memanggil ulang API.
  * @param {Function} props.onAddToCart - Handler menambah produk ke keranjang.
+ * @param {object} props.t - Kamus bahasa aktif.
  * @returns {JSX.Element} Elemen halaman katalog belanja.
  */
 export default function ShopPage({
   products,
-  filters,
-  onUpdateFilters,
-  onResetFilters,
-  onSelectProduct,
+  isLoading,
+  apiError,
+  onRetryFetch,
   onAddToCart,
+  t,
 }) {
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Membaca filter awal dari URL query string (`?q=`, `?room=`, `?category=`)
+  const urlQuery = searchParams.get('q') || ''
+  const urlRoom = searchParams.get('room') || ''
+  const urlCategory = searchParams.get('category') || ''
+
+  const [selectedCategories, setSelectedCategories] = useState(() =>
+    urlCategory ? [urlCategory] : []
+  )
+  const [selectedRooms, setSelectedRooms] = useState(() => (urlRoom ? [urlRoom] : []))
+  const [selectedMaterials, setSelectedMaterials] = useState([])
+  const [priceMin, setPriceMin] = useState(MIN_PRICE_BOUND)
+  const [priceMax, setPriceMax] = useState(MAX_PRICE_BOUND)
+  const [sizeTier, setSizeTier] = useState('All sizes')
+  const [sortBy, setSortBy] = useState('featured')
   const [currentPage, setCurrentPage] = useState(1)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
-  // Hanya tampilkan produk berstatus Published (atau produk aktif) di storefront, tetap hormati stok 0 bila published
+  // Menggabungkan filter URL (`?room=` atau `?category=`) dengan pilihan checkbox lokal
+  const effectiveCategories = useMemo(() => {
+    if (urlCategory && !selectedCategories.includes(urlCategory)) {
+      return [...selectedCategories, urlCategory]
+    }
+    return selectedCategories
+  }, [selectedCategories, urlCategory])
+
+  const effectiveRooms = useMemo(() => {
+    if (urlRoom && !selectedRooms.includes(urlRoom)) {
+      return [...selectedRooms, urlRoom]
+    }
+    return selectedRooms
+  }, [selectedRooms, urlRoom])
+
   const storefrontProducts = useMemo(
     () => products.filter((item) => item.status !== 'Draft'),
     [products]
   )
 
-  // Daftar opsi unik untuk checkbox sidebar agar otomatis selaras dengan penambahan produk baru di Seller Studio
   const categoryOptions = ['Seating', 'Tables', 'Storage', 'Lighting', 'Bedroom']
-  const materialOptions = ['Natural materials', 'Solid wood', 'Bouclé fabric', 'Steel & stone', 'Linen blend']
+  const materialOptions = [
+    'Natural materials',
+    'Solid wood',
+    'Bouclé fabric',
+    'Steel & stone',
+    'Linen blend',
+  ]
   const roomOptions = ['Living room', 'Dining room', 'Bedroom', 'Workspace']
-  const sizeTierOptions = ['All sizes', 'Compact (< 90cm)', 'Medium (90–160cm)', 'Large (> 160cm)']
+  const sizeTierOptions = ['All sizes', 'Compact (< 90cm)', 'Medium (90-160cm)', 'Large (> 160cm)']
 
   /**
-   * Menambah atau menghapus nilai dari array filter multi-pilih (`categories`, `materials`, `rooms`).
+   * Memperbarui kata kunci pencarian langsung pada URL (`?q=...`).
    *
-   * @param {'categories' | 'materials' | 'rooms'} key - Nama kunci array di objek filters.
-   * @param {string} value - Nilai opsi filter yang di-toggle.
+   * @param {string} nextQuery - Kata kunci pencarian baru.
    */
-  const toggleArrayFilter = (key, value) => {
-    const current = filters[key] || []
-    const next = current.includes(value)
-      ? current.filter((item) => item !== value)
-      : [...current, value]
-    onUpdateFilters({ [key]: next })
+  const handleSearchQueryChange = (nextQuery) => {
+    const nextParams = new URLSearchParams(searchParams)
+    if (nextQuery.trim()) {
+      nextParams.set('q', nextQuery)
+    } else {
+      nextParams.delete('q')
+    }
+    setSearchParams(nextParams, { replace: true })
     setCurrentPage(1)
   }
 
   /**
-   * Menghitung daftar produk terfilter dan terurut secara memoized agar performa tetap instan.
+   * Mengaktifkan atau menonaktifkan nilai pada filter kategori, ruangan, atau material.
+   *
+   * @param {'categories' | 'rooms' | 'materials'} type - Grup filter yang diubah.
+   * @param {string} value - Nilai item filter.
    */
+  const toggleFilterItem = (type, value) => {
+    const nextParams = new URLSearchParams(searchParams)
+    if (type === 'categories') {
+      if (urlCategory === value) nextParams.delete('category')
+      setSelectedCategories((prev) => {
+        const base = urlCategory && !prev.includes(urlCategory) ? [...prev, urlCategory] : prev
+        return base.includes(value) ? base.filter((i) => i !== value) : [...base, value]
+      })
+    } else if (type === 'rooms') {
+      if (urlRoom === value) nextParams.delete('room')
+      setSelectedRooms((prev) => {
+        const base = urlRoom && !prev.includes(urlRoom) ? [...prev, urlRoom] : prev
+        return base.includes(value) ? base.filter((i) => i !== value) : [...base, value]
+      })
+    } else {
+      setSelectedMaterials((prev) =>
+        prev.includes(value) ? prev.filter((i) => i !== value) : [...prev, value]
+      )
+    }
+    setSearchParams(nextParams, { replace: true })
+    setCurrentPage(1)
+  }
+
+  /**
+   * Mengembalikan seluruh filter dan parameter URL ke kondisi awal.
+   */
+  const handleResetAllFilters = () => {
+    setSelectedCategories([])
+    setSelectedRooms([])
+    setSelectedMaterials([])
+    setPriceMin(MIN_PRICE_BOUND)
+    setPriceMax(MAX_PRICE_BOUND)
+    setSizeTier('All sizes')
+    setSortBy('featured')
+    setSearchParams({}, { replace: true })
+    setCurrentPage(1)
+  }
+
   const filteredProducts = useMemo(() => {
-    const query = (filters.searchQuery || '').trim().toLowerCase()
+    const query = urlQuery.trim().toLowerCase()
 
     const matched = storefrontProducts.filter((product) => {
-      // 1. Cek kecocokan kata kunci pencarian
       if (query) {
         const haystack = [
           product.name,
@@ -90,51 +167,57 @@ export default function ShopPage({
         if (!haystack.includes(query)) return false
       }
 
-      // 2. Cek kategori terpilih
-      if (filters.categories.length > 0 && !filters.categories.includes(product.category)) {
+      if (effectiveCategories.length > 0 && !effectiveCategories.includes(product.category)) {
         return false
       }
 
-      // 3. Cek tipe ruangan terpilih
-      if (filters.rooms.length > 0 && !filters.rooms.includes(product.room)) {
+      if (effectiveRooms.length > 0 && !effectiveRooms.includes(product.room)) {
         return false
       }
 
-      // 4. Cek material terpilih
       if (
-        filters.materials.length > 0 &&
-        !filters.materials.some((mat) => (product.materials || []).includes(mat))
+        selectedMaterials.length > 0 &&
+        !selectedMaterials.some((mat) => (product.materials || []).includes(mat))
       ) {
         return false
       }
 
-      // 5. Cek rentang harga
-      if (product.price < filters.priceMin || product.price > filters.priceMax) {
+      if (product.price < priceMin || product.price > priceMax) {
         return false
       }
 
-      // 6. Cek dimensi / ukuran
-      if (filters.sizeTier !== 'All sizes' && product.sizeTier !== filters.sizeTier) {
+      if (
+        sizeTier !== 'All sizes' &&
+        product.sizeTier.replace('–', '-') !== sizeTier.replace('–', '-')
+      ) {
         return false
       }
 
       return true
     })
 
-    // Pengurutan hasil
     const sorted = [...matched]
-    if (filters.sortBy === 'price-asc') {
+    if (sortBy === 'price-asc') {
       sorted.sort((a, b) => a.price - b.price)
-    } else if (filters.sortBy === 'price-desc') {
+    } else if (sortBy === 'price-desc') {
       sorted.sort((a, b) => b.price - a.price)
-    } else if (filters.sortBy === 'name-asc') {
+    } else if (sortBy === 'name-asc') {
       sorted.sort((a, b) => a.name.localeCompare(b.name))
     }
 
     return sorted
-  }, [storefrontProducts, filters])
+  }, [
+    storefrontProducts,
+    urlQuery,
+    effectiveCategories,
+    effectiveRooms,
+    selectedMaterials,
+    priceMin,
+    priceMax,
+    sizeTier,
+    sortBy,
+  ])
 
-  // Kalkulasi paginasi halaman aktif
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE))
   const safePage = Math.min(currentPage, totalPages)
   const paginatedProducts = filteredProducts.slice(
@@ -142,90 +225,87 @@ export default function ShopPage({
     safePage * ITEMS_PER_PAGE
   )
 
-  /**
-   * Membangun daftar chip filter aktif di atas grid untuk memudahkan pengguna melihat filter yang diterapkan.
-   */
   const activeFilterChips = []
-  filters.categories.forEach((cat) =>
+  effectiveCategories.forEach((cat) =>
     activeFilterChips.push({
       id: `cat-${cat}`,
       label: cat,
-      onRemove: () => toggleArrayFilter('categories', cat),
+      onRemove: () => toggleFilterItem('categories', cat),
     })
   )
-  filters.rooms.forEach((room) =>
+  effectiveRooms.forEach((room) =>
     activeFilterChips.push({
       id: `room-${room}`,
       label: room,
-      onRemove: () => toggleArrayFilter('rooms', room),
+      onRemove: () => toggleFilterItem('rooms', room),
     })
   )
-  filters.materials.forEach((mat) =>
+  selectedMaterials.forEach((mat) =>
     activeFilterChips.push({
       id: `mat-${mat}`,
       label: mat,
-      onRemove: () => toggleArrayFilter('materials', mat),
+      onRemove: () => toggleFilterItem('materials', mat),
     })
   )
-  if (filters.priceMin > MIN_PRICE_BOUND || filters.priceMax < MAX_PRICE_BOUND) {
+  if (priceMin > MIN_PRICE_BOUND || priceMax < MAX_PRICE_BOUND) {
     activeFilterChips.push({
       id: 'price-range',
-      label: `Rp ${formatCompactPrice(filters.priceMin)} – ${formatCompactPrice(filters.priceMax)}`,
-      onRemove: () => onUpdateFilters({ priceMin: MIN_PRICE_BOUND, priceMax: MAX_PRICE_BOUND }),
+      label: `Rp ${formatCompactPrice(priceMin)} - ${formatCompactPrice(priceMax)}`,
+      onRemove: () => {
+        setPriceMin(MIN_PRICE_BOUND)
+        setPriceMax(MAX_PRICE_BOUND)
+      },
     })
   }
-  if (filters.sizeTier !== 'All sizes') {
+  if (sizeTier !== 'All sizes') {
     activeFilterChips.push({
       id: 'size-tier',
-      label: filters.sizeTier,
-      onRemove: () => onUpdateFilters({ sizeTier: 'All sizes' }),
+      label: sizeTier,
+      onRemove: () => setSizeTier('All sizes'),
     })
   }
 
-  // Persentase posisi track bar warna gelap di slider harga ganda
-  const minPercent = ((filters.priceMin - MIN_PRICE_BOUND) / (MAX_PRICE_BOUND - MIN_PRICE_BOUND)) * 100
-  const maxPercent = ((filters.priceMax - MIN_PRICE_BOUND) / (MAX_PRICE_BOUND - MIN_PRICE_BOUND)) * 100
+  const minPercent = ((priceMin - MIN_PRICE_BOUND) / (MAX_PRICE_BOUND - MIN_PRICE_BOUND)) * 100
+  const maxPercent = ((priceMax - MIN_PRICE_BOUND) / (MAX_PRICE_BOUND - MIN_PRICE_BOUND)) * 100
 
   return (
-    <main className="mx-auto max-w-[1440px] px-5 pt-8 sm:px-8 sm:pt-10 lg:px-12">
-      {/* Header Judul Halaman Shop */}
-      <div className="flex flex-col justify-between gap-4 border-b border-[#e6e6e9] pb-7 lg:flex-row lg:items-end">
+    <main className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-8 sm:pt-10 lg:px-12">
+      {/* Header Judul Halaman Katalog */}
+      <div className="flex flex-col justify-between gap-3 border-b border-[#e6e6e9] pb-6 lg:flex-row lg:items-end">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#71717a]">
-            CATALOG — COLLECTION 026
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#71717a]">
+            {t.shopTag}
           </p>
-          <h1 className="mt-2 text-[36px] sm:text-[48px] font-normal leading-none tracking-[-1.6px] text-[#111111]">
-            DISCOVER FURNITURE.
+          <h1 className="mt-1.5 text-[34px] sm:text-[44px] font-normal leading-none tracking-[-1.4px] text-[#111111]">
+            {t.shopTitle}
           </h1>
         </div>
-        <p className="text-[13px] text-[#71717a]">
-          Showing <strong className="font-medium text-[#111111]">{filteredProducts.length}</strong>{' '}
-          considered pieces ready for modern rooms
+        <p className="text-[13px] text-[#52525b]">
+          {t.shopShowing}{' '}
+          <strong className="font-medium text-[#111111]">{filteredProducts.length}</strong>{' '}
+          {t.shopPieces}
         </p>
       </div>
 
       {/* Bilah Pencarian & Urutkan */}
       <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-1 items-center gap-3">
-          <div className="flex h-[46px] flex-1 items-center gap-3 rounded-full bg-[#f5f5f7] px-5">
+        <div className="flex flex-1 items-center gap-2.5">
+          <div className="flex h-11 flex-1 items-center gap-3 rounded-full border border-[#e6e6e9] bg-[#f5f5f7] px-4">
             <img src={ICONS.search} alt="" width={16} height={16} className="h-4 w-4 opacity-70" />
             <input
               type="text"
-              value={filters.searchQuery}
-              onChange={(e) => {
-                onUpdateFilters({ searchQuery: e.target.value })
-                setCurrentPage(1)
-              }}
-              placeholder="Search sofa, lounge chair, walnut, SKU..."
+              value={urlQuery}
+              onChange={(e) => handleSearchQueryChange(e.target.value)}
+              placeholder={t.searchPlaceholder}
               className="w-full bg-transparent text-[13px] text-[#111111] placeholder:text-[#71717a] focus:outline-none"
             />
-            {filters.searchQuery ? (
+            {urlQuery ? (
               <button
                 type="button"
-                onClick={() => onUpdateFilters({ searchQuery: '' })}
+                onClick={() => handleSearchQueryChange('')}
                 className="text-[12px] text-[#71717a] hover:text-[#111111] cursor-pointer"
               >
-                Clear
+                ×
               </button>
             ) : null}
           </div>
@@ -233,9 +313,9 @@ export default function ShopPage({
           <button
             type="button"
             onClick={() => setMobileFiltersOpen((prev) => !prev)}
-            className="inline-flex h-[46px] items-center gap-2 rounded-full border border-[#e6e6e9] bg-white px-4 text-[12px] font-medium text-[#111111] lg:hidden cursor-pointer"
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-[#e6e6e9] bg-white px-4 text-[12px] font-medium text-[#111111] lg:hidden cursor-pointer"
           >
-            <span>Filters</span>
+            <span>{t.filterTitle}</span>
             {activeFilterChips.length > 0 ? (
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#141414] text-[10px] text-white">
                 {activeFilterChips.length}
@@ -246,19 +326,19 @@ export default function ShopPage({
 
         {/* Dropdown Pengurutan */}
         <div className="flex items-center gap-2.5">
-          <label htmlFor="shop-sort-select" className="text-[12px] text-[#71717a]">
-            Sort by:
+          <label htmlFor="shop-sort-select" className="text-[12px] text-[#52525b]">
+            {t.sortLabel}
           </label>
           <select
             id="shop-sort-select"
-            value={filters.sortBy}
-            onChange={(e) => onUpdateFilters({ sortBy: e.target.value })}
-            className="h-[46px] rounded-full border border-[#e6e6e9] bg-[#f5f5f7] px-4 text-[12px] font-medium text-[#111111] focus:outline-none cursor-pointer"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="h-11 rounded-full border border-[#e6e6e9] bg-[#f5f5f7] px-4 text-[12px] font-medium text-[#111111] focus:outline-none cursor-pointer"
           >
-            <option value="featured">Featured pieces</option>
-            <option value="price-asc">Price: Low to High</option>
-            <option value="price-desc">Price: High to Low</option>
-            <option value="name-asc">Alphabetical: A–Z</option>
+            <option value="featured">{t.sortFeatured}</option>
+            <option value="price-asc">{t.sortPriceAsc}</option>
+            <option value="price-desc">{t.sortPriceDesc}</option>
+            <option value="name-asc">{t.sortNameAsc}</option>
           </select>
         </div>
       </div>
@@ -271,7 +351,7 @@ export default function ShopPage({
               key={chip.id}
               type="button"
               onClick={chip.onRemove}
-              className="inline-flex items-center gap-2 rounded-full bg-[#141414] px-3.5 py-1.5 text-[11px] font-medium text-white transition-opacity hover:opacity-85 cursor-pointer"
+              className="inline-flex h-8 items-center gap-2 rounded-full bg-[#141414] px-3.5 text-[11px] font-medium text-white transition-opacity hover:opacity-85 cursor-pointer"
             >
               <span>{chip.label}</span>
               <span className="text-[#38bdf8]">×</span>
@@ -279,19 +359,16 @@ export default function ShopPage({
           ))}
           <button
             type="button"
-            onClick={() => {
-              onResetFilters()
-              setCurrentPage(1)
-            }}
-            className="px-2.5 py-1.5 text-[11px] font-medium text-[#71717a] underline underline-offset-4 hover:text-[#111111] cursor-pointer"
+            onClick={handleResetAllFilters}
+            className="px-2.5 py-1.5 text-[12px] font-medium text-[#52525b] underline underline-offset-4 hover:text-[#111111] cursor-pointer"
           >
-            Clear all
+            {t.filterReset}
           </button>
         </div>
       ) : null}
 
       {/* Tata Letak Dua Kolom: Filter Sidebar Kiri + Grid Produk Kanan */}
-      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[276px_1fr]">
+      <div className="mt-7 grid grid-cols-1 gap-8 lg:grid-cols-[268px_1fr]">
         {/* SIDEBAR FILTER */}
         <aside
           className={`${
@@ -299,28 +376,25 @@ export default function ShopPage({
           } lg:block h-fit rounded-[20px] border border-[#e6e6e9] bg-[#fafafa] p-5`}
         >
           <div className="flex items-center justify-between border-b border-[#e6e6e9] pb-3.5">
-            <h2 className="text-[12px] font-medium uppercase tracking-[0.1em] text-[#111111]">
-              FILTER BY
+            <h2 className="text-[12px] font-medium uppercase tracking-[0.08em] text-[#111111]">
+              {t.filterTitle}
             </h2>
             <button
               type="button"
-              onClick={() => {
-                onResetFilters()
-                setCurrentPage(1)
-              }}
-              className="text-[11px] text-[#71717a] hover:text-[#111111] cursor-pointer"
+              onClick={handleResetAllFilters}
+              className="text-[11px] font-medium text-[#52525b] hover:text-[#111111] cursor-pointer"
             >
-              Reset
+              {t.filterReset}
             </button>
           </div>
 
           {/* 1. Category Filter */}
           <div className="mt-5 border-b border-[#e6e6e9] pb-5">
-            <h3 className="text-[12px] font-medium text-[#111111]">Category</h3>
+            <h3 className="text-[12px] font-medium text-[#111111]">{t.filterCategory}</h3>
             <div className="mt-3 space-y-2.5">
               {categoryOptions.map((category) => {
                 const count = storefrontProducts.filter((p) => p.category === category).length
-                const checked = filters.categories.includes(category)
+                const checked = effectiveCategories.includes(category)
                 return (
                   <label
                     key={category}
@@ -330,7 +404,7 @@ export default function ShopPage({
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={() => toggleArrayFilter('categories', category)}
+                        onChange={() => toggleFilterItem('categories', category)}
                         className="h-4 w-4 accent-[#141414] rounded cursor-pointer"
                       />
                       <span>{category}</span>
@@ -345,12 +419,12 @@ export default function ShopPage({
           {/* 2. Dual-Range Price Slider */}
           <div className="mt-5 border-b border-[#e6e6e9] pb-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-[12px] font-medium text-[#111111]">Price range</h3>
+              <h3 className="text-[12px] font-medium text-[#111111]">{t.filterPrice}</h3>
               <span className="text-[11px] font-medium text-[#71717a]">IDR</span>
             </div>
 
             <div className="mt-4">
-              <div className="relative h-5 flex items-center">
+              <div className="relative flex h-5 items-center">
                 <div className="h-1.5 w-full rounded-full bg-[#e6e6e9]" />
                 <div
                   className="absolute h-1.5 rounded-full bg-[#141414]"
@@ -362,10 +436,10 @@ export default function ShopPage({
                   min={MIN_PRICE_BOUND}
                   max={MAX_PRICE_BOUND}
                   step={PRICE_STEP}
-                  value={filters.priceMin}
+                  value={priceMin}
                   onChange={(e) => {
-                    const nextMin = Math.min(Number(e.target.value), filters.priceMax - PRICE_STEP)
-                    onUpdateFilters({ priceMin: nextMin })
+                    const nextMin = Math.min(Number(e.target.value), priceMax - PRICE_STEP)
+                    setPriceMin(nextMin)
                     setCurrentPage(1)
                   }}
                   className="range-slider-thumb pointer-events-none absolute inset-0 h-5 w-full appearance-none bg-transparent"
@@ -376,10 +450,10 @@ export default function ShopPage({
                   min={MIN_PRICE_BOUND}
                   max={MAX_PRICE_BOUND}
                   step={PRICE_STEP}
-                  value={filters.priceMax}
+                  value={priceMax}
                   onChange={(e) => {
-                    const nextMax = Math.max(Number(e.target.value), filters.priceMin + PRICE_STEP)
-                    onUpdateFilters({ priceMax: nextMax })
+                    const nextMax = Math.max(Number(e.target.value), priceMin + PRICE_STEP)
+                    setPriceMax(nextMax)
                     setCurrentPage(1)
                   }}
                   className="range-slider-thumb pointer-events-none absolute inset-0 h-5 w-full appearance-none bg-transparent"
@@ -387,22 +461,25 @@ export default function ShopPage({
               </div>
 
               <div className="mt-2.5 flex items-center justify-between text-[11px] font-medium text-[#111111]">
-                <span>{formatRupiah(filters.priceMin)}</span>
-                <span>{formatRupiah(filters.priceMax)}</span>
+                <span>{formatRupiah(priceMin)}</span>
+                <span>{formatRupiah(priceMax)}</span>
               </div>
             </div>
           </div>
 
           {/* 3. Material Filter */}
           <div className="mt-5 border-b border-[#e6e6e9] pb-5">
-            <h3 className="text-[12px] font-medium text-[#111111]">Material</h3>
+            <h3 className="text-[12px] font-medium text-[#111111]">{t.filterMaterial}</h3>
             <div className="mt-3 space-y-2.5">
               {materialOptions.map((mat) => (
-                <label key={mat} className="flex items-center gap-2.5 text-[13px] text-[#111111] cursor-pointer">
+                <label
+                  key={mat}
+                  className="flex items-center gap-2.5 text-[13px] text-[#111111] cursor-pointer"
+                >
                   <input
                     type="checkbox"
-                    checked={filters.materials.includes(mat)}
-                    onChange={() => toggleArrayFilter('materials', mat)}
+                    checked={selectedMaterials.includes(mat)}
+                    onChange={() => toggleFilterItem('materials', mat)}
                     className="h-4 w-4 accent-[#141414] rounded cursor-pointer"
                   />
                   <span>{mat}</span>
@@ -413,14 +490,17 @@ export default function ShopPage({
 
           {/* 4. Room Type Filter */}
           <div className="mt-5 border-b border-[#e6e6e9] pb-5">
-            <h3 className="text-[12px] font-medium text-[#111111]">Room</h3>
+            <h3 className="text-[12px] font-medium text-[#111111]">{t.filterRoom}</h3>
             <div className="mt-3 space-y-2.5">
               {roomOptions.map((room) => (
-                <label key={room} className="flex items-center gap-2.5 text-[13px] text-[#111111] cursor-pointer">
+                <label
+                  key={room}
+                  className="flex items-center gap-2.5 text-[13px] text-[#111111] cursor-pointer"
+                >
                   <input
                     type="checkbox"
-                    checked={filters.rooms.includes(room)}
-                    onChange={() => toggleArrayFilter('rooms', room)}
+                    checked={effectiveRooms.includes(room)}
+                    onChange={() => toggleFilterItem('rooms', room)}
                     className="h-4 w-4 accent-[#141414] rounded cursor-pointer"
                   />
                   <span>{room}</span>
@@ -431,14 +511,17 @@ export default function ShopPage({
 
           {/* 5. Dimension Footprint Filter */}
           <div className="mt-5">
-            <label htmlFor="size-tier-select" className="block text-[12px] font-medium text-[#111111]">
-              Dimensions / Footprint
+            <label
+              htmlFor="size-tier-select"
+              className="block text-[12px] font-medium text-[#111111]"
+            >
+              {t.filterDimensions}
             </label>
             <select
               id="size-tier-select"
-              value={filters.sizeTier}
+              value={sizeTier}
               onChange={(e) => {
-                onUpdateFilters({ sizeTier: e.target.value })
+                setSizeTier(e.target.value)
                 setCurrentPage(1)
               }}
               className="mt-2.5 h-10 w-full rounded-xl border border-[#e6e6e9] bg-white px-3 text-[12px] text-[#111111] focus:outline-none cursor-pointer"
@@ -452,25 +535,28 @@ export default function ShopPage({
           </div>
         </aside>
 
-        {/* GRID PRODUK KANAN */}
+        {/* GRID PRODUK KANAN (DENGAN SKELETON & ERROR HANDLING API) */}
         <div>
-          {paginatedProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-[20px] border border-dashed border-[#d4d4d8] bg-[#fafafa] px-6 py-20 text-center">
-              <p className="text-[18px] font-normal text-[#111111]">
-                No furniture matches your selected filters
-              </p>
-              <p className="mt-2 max-w-md text-[13px] text-[#71717a]">
-                Try broadening your price ceiling or clearing a material/room filter to inspect more pieces.
-              </p>
+          {isLoading ? (
+            <ProductGridSkeleton count={6} label={t.apiLoadingTitle} />
+          ) : apiError ? (
+            <ApiErrorState
+              title={t.apiErrorTitle}
+              description={t.apiErrorDesc}
+              errorDetail={apiError}
+              retryLabel={t.apiRetryBtn}
+              onRetry={onRetryFetch}
+            />
+          ) : paginatedProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-[20px] border border-dashed border-[#d4d4d8] bg-[#fafafa] px-6 py-16 text-center">
+              <p className="text-[18px] font-normal text-[#111111]">{t.emptyFilterTitle}</p>
+              <p className="mt-2 max-w-md text-[13px] text-[#52525b]">{t.emptyFilterDesc}</p>
               <button
                 type="button"
-                onClick={() => {
-                  onResetFilters()
-                  setCurrentPage(1)
-                }}
-                className="mt-6 rounded-full bg-[#141414] px-6 py-2.5 text-[12px] font-medium text-white cursor-pointer"
+                onClick={handleResetAllFilters}
+                className="mt-6 h-11 rounded-full bg-[#141414] px-6 text-[12px] font-medium text-white cursor-pointer"
               >
-                Reset all filters
+                {t.filterReset}
               </button>
             </div>
           ) : (
@@ -479,7 +565,6 @@ export default function ShopPage({
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onSelectProduct={onSelectProduct}
                   onAddToCart={onAddToCart}
                 />
               ))}
@@ -487,45 +572,47 @@ export default function ShopPage({
           )}
 
           {/* Paginasi Bawah */}
-          <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-[#e6e6e9] pt-6 sm:flex-row">
-            <p className="text-[12px] text-[#71717a]">
-              Page {safePage} of {totalPages} · {filteredProducts.length} pieces matched
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={safePage === 1}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f5f5f7] text-[12px] text-[#111111] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
-                aria-label="Halaman sebelumnya"
-              >
-                ←
-              </button>
-              {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => (
+          {!isLoading && !apiError && filteredProducts.length > 0 ? (
+            <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-[#e6e6e9] pt-6 sm:flex-row">
+              <p className="text-[12px] text-[#52525b]">
+                Page {safePage} / {totalPages} · {filteredProducts.length} {t.shopPieces}
+              </p>
+              <div className="flex items-center gap-2">
                 <button
-                  key={pageNum}
                   type="button"
-                  onClick={() => setCurrentPage(pageNum)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-medium transition-colors cursor-pointer ${
-                    pageNum === safePage
-                      ? 'bg-[#141414] text-white'
-                      : 'bg-[#f5f5f7] text-[#71717a] hover:text-[#111111]'
-                  }`}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f5f5f7] text-[12px] text-[#111111] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                  aria-label="Previous page"
                 >
-                  {pageNum}
+                  ←
                 </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safePage === totalPages}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f5f5f7] text-[12px] text-[#111111] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
-                aria-label="Halaman berikutnya"
-              >
-                →
-              </button>
+                {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`flex h-11 w-11 items-center justify-center rounded-full text-[12px] font-medium transition-colors cursor-pointer ${
+                      pageNum === safePage
+                        ? 'bg-[#141414] text-white'
+                        : 'bg-[#f5f5f7] text-[#52525b] hover:text-[#111111]'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f5f5f7] text-[12px] text-[#111111] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                  aria-label="Next page"
+                >
+                  →
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
     </main>

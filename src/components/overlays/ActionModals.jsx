@@ -329,17 +329,12 @@ function SignInModalContent({
   }
 
   return (
-    <div className="w-full max-w-[480px] rounded-[24px] border border-[#e6e6e9] bg-white p-6 sm:p-7 shadow-2xl">
-      {/* Header Modal */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#71717a]">
-            STILL ACCOUNT · DUMMY AUTH
-          </p>
-          <h2 className="mt-1 text-[24px] font-normal tracking-[-0.6px] text-[#111111]">
-            {showCredentialForm ? 'Sign in to STILL.' : 'Your active session.'}
-          </h2>
-        </div>
+    <div className="w-full max-w-[420px] rounded-[22px] bg-white p-6 shadow-xl">
+      {/* Header Modal Minimalis Tanpa Merk STILL */}
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-[20px] font-medium tracking-[-0.4px] text-[#111111]">
+          {showCredentialForm ? 'Sign In' : currentUser?.roleLabel || 'Account'}
+        </h2>
         <button
           type="button"
           onClick={onClose}
@@ -352,29 +347,24 @@ function SignInModalContent({
 
       {/* Banner Informasi Jika Dialihkan dari Halaman Terproteksi */}
       {authNotice ? (
-        <div className="mt-4 rounded-[14px] border border-[#e8e5df] bg-[#faf9f6] px-4 py-3 text-[12px] leading-[1.5] text-[#8c6239]">
+        <div className="mt-3.5 rounded-xl bg-[#faf9f6] px-3.5 py-2.5 text-[12px] leading-[1.5] text-[#8c6239]">
           {authNotice}
         </div>
       ) : null}
 
-      {/* TAMPILAN 1: STATUS SESI AKTIF (JIKA SUDAH LOGIN DAN TIDAK SEDANG GANTI AKUN) */}
+      {/* TAMPILAN 1: STATUS SESI AKTIF */}
       {currentUser && !showCredentialForm ? (
-        <div className="mt-5 space-y-4">
-          <div className="rounded-[18px] border border-[#e6e6e9] bg-[#f5f5f7] p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[#376b56]">
-                <span className="h-2 w-2 rounded-full bg-[#376b56]" />
-                Signed in as {currentUser.roleLabel}
-              </span>
-              <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] font-medium text-[#111111] border border-[#e6e6e9]">
-                {currentUser.role === 'seller' ? 'SELLER WORKSPACE' : 'STOREFRONT'}
-              </span>
-            </div>
-            <p className="mt-2.5 text-[18px] font-medium text-[#111111]">{currentUser.name}</p>
+        <div className="mt-4 space-y-4">
+          <div className="rounded-[16px] bg-[#f5f5f7] p-4">
+            <span className="inline-flex items-center gap-2 text-[11px] font-medium text-[#376b56]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#376b56]" />
+              {currentUser.roleLabel}
+            </span>
+            <p className="mt-1.5 text-[16px] font-medium text-[#111111]">{currentUser.name}</p>
             <p className="text-[12px] text-[#71717a]">{currentUser.email}</p>
           </div>
 
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2">
             {currentUser.role === 'seller' ? (
               <>
                 <button
@@ -383,9 +373,9 @@ function SignInModalContent({
                     onClose()
                     onNavigatePage('seller-inventory')
                   }}
-                  className="h-11 rounded-full bg-[#141414] px-4 text-[12px] font-medium text-white hover:bg-[#27272a] cursor-pointer"
+                  className="h-10 rounded-full bg-[#141414] px-4 text-[12px] font-medium text-white hover:bg-[#27272a] cursor-pointer"
                 >
-                  Open Seller Inventory
+                  Inventory
                 </button>
                 <button
                   type="button"
@@ -393,9 +383,9 @@ function SignInModalContent({
                     onClose()
                     onNavigatePage('seller-studio')
                   }}
-                  className="h-11 rounded-full border border-[#e6e6e9] bg-white px-4 text-[12px] font-medium text-[#111111] hover:bg-[#f5f5f7] cursor-pointer"
+                  className="h-10 rounded-full bg-[#f5f5f7] px-4 text-[12px] font-medium text-[#111111] hover:bg-[#e6e6e9] cursor-pointer"
                 >
-                  Open Seller Studio
+                  Add Furniture
                 </button>
               </>
             ) : (
@@ -406,9 +396,9 @@ function SignInModalContent({
                     onClose()
                     onNavigatePage('shop')
                   }}
-                  className="h-11 rounded-full bg-[#141414] px-4 text-[12px] font-medium text-white hover:bg-[#27272a] cursor-pointer"
+                  className="h-10 rounded-full bg-[#141414] px-4 text-[12px] font-medium text-white hover:bg-[#27272a] cursor-pointer"
                 >
-                  Browse Furniture
+                  Catalog
                 </button>
                 <button
                   type="button"
@@ -416,42 +406,41 @@ function SignInModalContent({
                     onClose()
                     onNavigatePage('checkout')
                   }}
-                  className="h-11 rounded-full border border-[#e6e6e9] bg-white px-4 text-[12px] font-medium text-[#111111] hover:bg-[#f5f5f7] cursor-pointer"
+                  className="h-10 rounded-full bg-[#f5f5f7] px-4 text-[12px] font-medium text-[#111111] hover:bg-[#e6e6e9] cursor-pointer"
                 >
-                  Go to Checkout
+                  Checkout
                 </button>
               </>
             )}
           </div>
 
-          <div className="flex items-center justify-between border-t border-[#e6e6e9] pt-4 text-[12px]">
+          <div className="flex items-center justify-between pt-2 text-[12px]">
             <button
               type="button"
               onClick={() => {
                 setSelectedRole(currentUser.role === 'seller' ? 'customer' : 'seller')
                 setShowCredentialForm(true)
               }}
-              className="font-medium text-[#111111] underline underline-offset-4 hover:opacity-70 cursor-pointer"
+              className="text-[#71717a] hover:text-[#111111] cursor-pointer"
             >
-              Switch to {currentUser.role === 'seller' ? 'Pembeli' : 'Penjual'} account
+              Ganti ke {currentUser.role === 'seller' ? 'Customer' : 'Penjual'}
             </button>
             <button
               type="button"
               onClick={onSignOut}
-              className="rounded-full bg-[#fcedec] px-4 py-2 font-medium text-[#9b3f3f] hover:bg-[#f9dcd9] cursor-pointer"
+              className="rounded-full bg-[#fcedec] px-3.5 py-1.5 font-medium text-[#9b3f3f] hover:bg-[#f9dcd9] cursor-pointer"
             >
               Sign Out
             </button>
           </div>
         </div>
       ) : (
-        /* TAMPILAN 2: FORM LOGIN KREDENSIAL DUMMY (PEMBELI vs PENJUAL) */
-        <form onSubmit={handleFormSubmit} className="mt-5">
-          {/* Pilihan Peran (2 Tab: Pembeli & Penjual) */}
-          <div className="grid grid-cols-2 gap-1.5 rounded-full border border-[#e6e6e9] bg-[#f5f5f7] p-1">
+        /* TAMPILAN 2: FORM LOGIN MINIMALIS (CUSTOMER vs PENJUAL) */
+        <form onSubmit={handleFormSubmit} className="mt-4">
+          <div className="grid grid-cols-2 gap-1 rounded-full bg-[#f5f5f7] p-1">
             {[
-              { id: 'customer', title: 'Pembeli', subtitle: 'Buyer' },
-              { id: 'seller', title: 'Penjual', subtitle: 'Seller' },
+              { id: 'customer', title: 'Customer' },
+              { id: 'seller', title: 'Penjual' },
             ].map((roleTab) => {
               const active = selectedRole === roleTab.id
               return (
@@ -459,37 +448,30 @@ function SignInModalContent({
                   key={roleTab.id}
                   type="button"
                   onClick={() => handleRoleTabChange(roleTab.id)}
-                  className={`rounded-full py-2.5 text-[12px] font-medium transition-all cursor-pointer ${
+                  className={`rounded-full py-2 text-[12px] font-medium transition-all cursor-pointer ${
                     active
-                      ? 'bg-[#141414] text-white shadow-xs'
+                      ? 'bg-[#141414] text-white'
                       : 'text-[#71717a] hover:text-[#111111]'
                   }`}
                 >
-                  {roleTab.title} ({roleTab.subtitle})
+                  {roleTab.title}
                 </button>
               )
             })}
           </div>
 
-          {/* Kotak Bantuan Kredensial Dummy Sesuai Peran Aktif */}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[#e8e5df] bg-[#faf9f6] px-4 py-3">
-            <div className="text-[11px] leading-[1.5] text-[#716b63]">
-              <p className="font-medium uppercase tracking-[0.08em] text-[#8c6239]">
-                DEMO CREDENTIALS ({demoAccount.roleLabel})
-              </p>
-              <p className="mt-0.5 text-[#1a1a1a]">
-                Email: <code className="font-mono font-medium">{demoAccount.email}</code>
-              </p>
-              <p className="text-[#1a1a1a]">
-                Password: <code className="font-mono font-medium">{demoAccount.password}</code>
-              </p>
+          {/* Info Demo Ringkas */}
+          <div className="mt-3.5 flex items-center justify-between gap-2 rounded-xl bg-[#f5f5f7] px-3.5 py-2.5 text-[11px]">
+            <div className="text-[#52525b]">
+              <span className="font-mono">{demoAccount.email}</span> ·{' '}
+              <span className="font-mono">{demoAccount.password}</span>
             </div>
             <button
               type="button"
               onClick={handleFillDemo}
-              className="rounded-full border border-[#1a1a1a] bg-white px-3.5 py-1.5 text-[11px] font-medium text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white transition-colors cursor-pointer"
+              className="shrink-0 rounded-full bg-white px-3 py-1 font-medium text-[#111111] shadow-2xs hover:bg-[#141414] hover:text-white transition-colors cursor-pointer"
             >
-              Isi Otomatis
+              Auto-fill
             </button>
           </div>
 
